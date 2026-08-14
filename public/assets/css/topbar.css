@@ -1,0 +1,220 @@
+/*==================================================
+  SIGMA - TOPBAR
+==================================================*/
+
+.sigma-topbar {
+
+    height: 82px;
+
+    width: 100%;
+
+    background: #FFFFFF;
+
+    border-bottom: 1px solid #E5EAF0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 0 30px;
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 900;
+}
+
+
+/*==================================================
+  TÍTULO
+==================================================*/
+
+.topbar-title h1 {
+
+    margin: 0;
+
+    color: #0B3B60;
+
+    font-size: 24px;
+
+    font-weight: 700;
+
+    line-height: 1.2;
+}
+
+
+.topbar-title p {
+
+    margin: 5px 0 0;
+
+    color: #7B8A99;
+
+    font-size: 12px;
+}
+
+
+/*==================================================
+  ACCIONES
+==================================================*/
+
+.topbar-actions {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 18px;
+}
+
+
+.topbar-button {
+
+    width: 40px;
+
+    height: 40px;
+
+    border: none;
+
+    background: #F4F7FA;
+
+    color: #506070;
+
+    border-radius: 10px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    cursor: pointer;
+
+    transition: .2s ease;
+}
+
+
+.topbar-button:hover {
+
+    background: #E8EEF3;
+
+    color: #1D70B8;
+}
+
+
+.topbar-button i {
+
+    font-size: 17px;
+}
+
+
+/*==================================================
+  USUARIO
+==================================================*/
+
+.topbar-user {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding-left: 15px;
+
+    border-left: 1px solid #E5EAF0;
+}
+
+
+.topbar-avatar {
+
+    width: 42px;
+
+    height: 42px;
+
+    border-radius: 50%;
+
+    background: #1D70B8;
+
+    color: #FFFFFF;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+}
+
+
+.topbar-avatar i {
+
+    font-size: 18px;
+}
+
+
+.topbar-user-data {
+
+    display: flex;
+
+    flex-direction: column;
+
+    line-height: 1.2;
+}
+
+
+.topbar-user-data strong {
+
+    color: #0B3B60;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+
+.topbar-user-data small {
+
+    margin-top: 4px;
+
+    color: #8A99A8;
+
+    font-size: 11px;
+}
+
+
+/*==================================================
+  RESPONSIVE
+==================================================*/
+
+@media (max-width: 768px) {
+
+    .sigma-topbar {
+
+        padding: 0 18px;
+
+    }
+
+
+    .topbar-user-data {
+
+        display: none;
+
+    }
+
+
+    .topbar-user {
+
+        padding-left: 10px;
+
+    }
+
+
+    .topbar-title h1 {
+
+        font-size: 20px;
+
+    }
+
+}

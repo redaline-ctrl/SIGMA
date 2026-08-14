@@ -1,0 +1,185 @@
+/*==================================================
+  SIGMA - SIDEBAR
+==================================================*/
+
+.sigma-sidebar {
+
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    width: 260px;
+    height: 100vh;
+
+    background: #071A2F;
+
+    color: #FFFFFF;
+
+    display: flex;
+
+    flex-direction: column;
+
+    padding: 24px 16px;
+
+    z-index: 1000;
+
+    overflow-y: auto;
+}
+
+
+/*==================================================
+  LOGO
+==================================================*/
+
+.sidebar-logo {
+
+    padding: 10px 12px 24px;
+
+    border-bottom:
+        1px solid rgba(255, 255, 255, .10);
+
+    text-align: center;
+}
+
+
+.sidebar-logo-text {
+
+    font-size: 32px;
+
+    font-weight: 700;
+
+    letter-spacing: 4px;
+
+    color: #FFFFFF;
+}
+
+
+.sidebar-logo-subtitle {
+
+    margin-top: 5px;
+
+    font-size: 11px;
+
+    color: #8EA9C1;
+
+    line-height: 1.4;
+}
+
+
+/*==================================================
+  MENÚ
+==================================================*/
+
+.sidebar-menu {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 6px;
+
+    margin-top: 25px;
+}
+
+
+.sidebar-item {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    min-height: 48px;
+
+    padding: 0 14px;
+
+    border-radius: 10px;
+
+    color: #AFC4D8;
+
+    text-decoration: none;
+
+    font-size: 14px;
+
+    font-weight: 500;
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+}
+
+
+.sidebar-item i {
+
+    width: 22px;
+
+    text-align: center;
+
+    font-size: 18px;
+}
+
+
+.sidebar-item:hover {
+
+    background: rgba(29, 112, 184, .20);
+
+    color: #FFFFFF;
+}
+
+
+.sidebar-item.active {
+
+    background: linear-gradient(135deg, #1D70B8 0%, #2D83D6 100%);
+    color: #FFFFFF;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14), 0 0 0 1px rgba(29, 112, 184, 0.3);
+    font-weight: 700;
+}
+
+
+/*==================================================
+  FOOTER
+==================================================*/
+
+.sidebar-footer {
+
+    margin-top: auto;
+
+    padding: 20px 10px 5px;
+
+    border-top:
+        1px solid rgba(255, 255, 255, .10);
+
+    text-align: center;
+
+    color: #8EA9C1;
+
+    font-size: 11px;
+}
+
+
+.sidebar-status {
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    gap: 7px;
+
+    margin-bottom: 8px;
+}
+
+
+.status-dot {
+
+    width: 8px;
+
+    height: 8px;
+
+    background: #2ECC71;
+
+    border-radius: 50%;
+}
