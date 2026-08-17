@@ -3,17 +3,13 @@ FROM php:8.2-apache
 # Habilitar mod_rewrite
 RUN a2enmod rewrite
 
-# Apuntar el DocumentRoot a la carpeta público
-ENV APACHE_DOCUMENT_ROOT /var/www/html/público
+# Apuntar el DocumentRoot a la carpeta public
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Dar permisos de lectura a la carpeta público
-RUN echo "<Directory /var/www/html/público>\n\
-    Options Indexes FollowSymLinks\n\
-    AllowOverride All\n\
-    Require all granted\n\
-</Directory>" >> /etc/apache2/apache2.conf
+# Dar permisos a la carpeta public
+RUN printf "<Directory /var/www/html/public>\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted\n</Directory>\n" >> /etc/apache2/apache2.conf
 
 COPY . /var/www/html/
 
