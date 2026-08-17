@@ -40,17 +40,22 @@
 
                 <strong>
                     <?= htmlspecialchars(
-                        $usuarioActual ?? "Administrador"
+                        $usuarioActual ?? "Usuario"
                     ) ?>
                 </strong>
 
                 <small>
-                    Administrador
+                    <?= htmlspecialchars(ucfirst($rolActual ?? ($_SESSION["rol"] ?? "usuario")), ENT_QUOTES, "UTF-8") ?>
                 </small>
 
             </div>
 
         </div>
+
+        <form method="POST" action="<?= htmlspecialchars(app_route("auth", "logout"), ENT_QUOTES, "UTF-8") ?>">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES, "UTF-8") ?>">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Cerrar sesión</button>
+        </form>
 
     </div>
 

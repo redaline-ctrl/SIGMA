@@ -43,15 +43,15 @@
 
     <link
         rel="stylesheet"
-        href="/SIGMA/public/assets/css/sidebar.css"
+        href="<?= htmlspecialchars(app_url("/public/assets/css/sidebar.css"), ENT_QUOTES, "UTF-8") ?>"
     >
     <link
         rel="stylesheet"
-        href="/SIGMA/public/assets/css/topbar.css"
+        href="<?= htmlspecialchars(app_url("/public/assets/css/topbar.css"), ENT_QUOTES, "UTF-8") ?>"
     >
     <link
         rel="stylesheet"
-        href="/SIGMA/public/assets/css/dashboard.css"
+        href="<?= htmlspecialchars(app_url("/public/assets/css/dashboard.css"), ENT_QUOTES, "UTF-8") ?>"
     >
 
     <style>

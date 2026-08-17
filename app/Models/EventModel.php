@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . "/BaseModel.php";
+require_once __DIR__ . "/../../config/app.php";
 
 class EventModel extends BaseModel
 {
@@ -108,7 +109,14 @@ class EventModel extends BaseModel
             LEFT JOIN relevos r
                 ON r.id_operador = e.id_operador
                 AND r.turno = e.turno
-                AND DATE(r.fecha_operativa) = DATE(e.fecha_evento)
+                AND DATE(r.fecha_operativa) = DATE(e.fecha_operativa)
+                AND r.id_relevo = (
+                    SELECT MAX(r2.id_relevo)
+                    FROM relevos r2
+                    WHERE r2.id_operador = e.id_operador
+                    AND r2.turno = e.turno
+                    AND DATE(r2.fecha_operativa) = DATE(e.fecha_operativa)
+                )
             LEFT JOIN supervisores s
                 ON s.id_supervisor = r.id_supervisor
             WHERE 1 = 1
@@ -173,7 +181,14 @@ class EventModel extends BaseModel
             LEFT JOIN relevos r
                 ON r.id_operador = e.id_operador
                 AND r.turno = e.turno
-                AND DATE(r.fecha_operativa) = DATE(e.fecha_evento)
+                AND DATE(r.fecha_operativa) = DATE(e.fecha_operativa)
+                AND r.id_relevo = (
+                    SELECT MAX(r2.id_relevo)
+                    FROM relevos r2
+                    WHERE r2.id_operador = e.id_operador
+                    AND r2.turno = e.turno
+                    AND DATE(r2.fecha_operativa) = DATE(e.fecha_operativa)
+                )
             LEFT JOIN supervisores s ON s.id_supervisor = r.id_supervisor
             WHERE e.id_evento = ?
             LIMIT 1
@@ -249,28 +264,40 @@ class EventModel extends BaseModel
 
     public function guardarEvidencia(array $archivo): ?string
     {
+        $tiposPermitidos = [
+            "image/jpeg" => "jpg",
+            "image/png" => "png",
+            "image/webp" => "webp",
+            "application/pdf" => "pdf",
+        ];
+
         if (
             !isset($archivo["tmp_name"])
             || !is_uploaded_file($archivo["tmp_name"])
+            || ($archivo["size"] ?? 0) > 5 * 1024 * 1024
         ) {
+            return null;
+        }
+
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($archivo["tmp_name"]);
+        if (!isset($tiposPermitidos[$mime])) {
             return null;
         }
 
         $directorio = __DIR__ . "/../../storage/evidencias";
 
         if (!is_dir($directorio)) {
-            mkdir($directorio, 0777, true);
+            mkdir($directorio, 0750, true);
         }
 
-        $extension = pathinfo($archivo["name"], PATHINFO_EXTENSION);
-        $nombreArchivo = "evidencia_" . uniqid() . "." . strtolower($extension);
+        $nombreArchivo = "evidencia_" . bin2hex(random_bytes(16)) . "." . $tiposPermitidos[$mime];
         $rutaDestino = $directorio . "/" . $nombreArchivo;
 
         if (!move_uploaded_file($archivo["tmp_name"], $rutaDestino)) {
             return null;
         }
 
-        return "/SIGMA/storage/evidencias/" . $nombreArchivo;
+        return app_url("/storage/evidencias/" . $nombreArchivo);
     }
 
     public function actualizarEstado(int $idEvento, string $nuevoEstado): bool
@@ -278,6 +305,29 @@ class EventModel extends BaseModel
         $sql = "UPDATE eventos SET estado = ? WHERE id_evento = ?";
 
         return $this->ejecutar($sql, [$nuevoEstado, $idEvento]);
+    }
+
+    public function eliminarEventos(array $ids): bool
+    {
+        $ids = array_values(array_unique(array_filter(array_map("intval", $ids), static fn(int $id): bool => $id > 0)));
+        if (empty($ids)) {
+            return false;
+        }
+
+        $marcadores = implode(",", array_fill(0, count($ids), "?"));
+        $this->conexion->beginTransaction();
+
+        try {
+            $stmt = $this->conexion->prepare("DELETE FROM eventos WHERE id_evento IN ({$marcadores})");
+            $stmt->execute($ids);
+            $this->conexion->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->conexion->inTransaction()) {
+                $this->conexion->rollBack();
+            }
+            return false;
+        }
     }
 
     public function obtenerEstados(): array

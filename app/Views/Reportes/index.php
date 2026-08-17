@@ -16,11 +16,6 @@ $ultimosEventos = $ultimosEventos ?? [];
 <div class="dashboard-page">
 
     <div class="dashboard-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-            <h2>Reportes ejecutivos</h2>
-            <p>Resumen por día, semana o mes para supervisión y toma de decisiones.</p>
-        </div>
-
         <div class="d-flex gap-2 align-items-center flex-wrap">
             <form method="GET" class="d-flex gap-2 align-items-center">
                 <input type="hidden" name="controller" value="reporte">
@@ -34,9 +29,12 @@ $ultimosEventos = $ultimosEventos ?? [];
                 <button type="submit" class="btn btn-primary">Filtrar</button>
             </form>
 
-            <a href="/SIGMA/public/index.php?controller=reporte&action=export&fecha=<?= urlencode($fecha) ?>&periodo=<?= urlencode($periodo) ?>" target="_blank" class="btn btn-outline-dark">
+            <a href="<?= htmlspecialchars(app_route("reporte", "export", ["fecha" => $fecha, "periodo" => $periodo]), ENT_QUOTES, "UTF-8") ?>" target="_blank" class="btn btn-outline-dark">
                 <i class="bi bi-file-earmark-pdf"></i>
                 Exportar PDF
+            </a>
+            <a href="<?= htmlspecialchars(app_route("reporte", "history"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-outline-secondary">
+                <i class="bi bi-clock-history"></i> Historial
             </a>
         </div>
     </div>

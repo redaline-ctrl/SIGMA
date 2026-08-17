@@ -33,19 +33,6 @@ $totalCriticos = $totalCriticos ?? 0;
         ENCABEZADO
     ==========================================-->
 
-    <div class="dashboard-header">
-
-        <h2>
-            Dashboard
-        </h2>
-
-        <p>
-            Resumen general de actividad de SIGMA
-        </p>
-
-    </div>
-
-
     <!--=========================================
         KPIs
     ==========================================-->

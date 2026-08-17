@@ -23,7 +23,7 @@
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <a href="/SIGMA/public/index.php?controller=dashboardAdvanced&action=index" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
+            <a href="<?= htmlspecialchars(app_route("dashboardAdvanced"), ENT_QUOTES, "UTF-8") ?>" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
                 <div class="card-body text-center py-4">
                     <i class="bi bi-bar-chart-line-fill fs-1 text-primary mb-3"></i>
                     <h6 class="mb-2">Dashboard Ejecutivo</h6>
@@ -33,7 +33,7 @@
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <a href="/SIGMA/public/index.php?controller=event&action=index" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
+            <a href="<?= htmlspecialchars(app_route("event"), ENT_QUOTES, "UTF-8") ?>" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
                 <div class="card-body text-center py-4">
                     <i class="bi bi-exclamation-triangle-fill fs-1 text-warning mb-3"></i>
                     <h6 class="mb-2">Eventos</h6>
@@ -43,7 +43,7 @@
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <a href="/SIGMA/public/index.php?controller=relevo&action=index" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
+            <a href="<?= htmlspecialchars(app_route("relevo"), ENT_QUOTES, "UTF-8") ?>" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
                 <div class="card-body text-center py-4">
                     <i class="bi bi-arrow-repeat fs-1 text-info mb-3"></i>
                     <h6 class="mb-2">Relevos</h6>
@@ -53,7 +53,7 @@
         </div>
 
         <div class="col-md-6 col-lg-3">
-            <a href="/SIGMA/public/index.php?controller=reporte&action=index" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
+            <a href="<?= htmlspecialchars(app_route("reporte"), ENT_QUOTES, "UTF-8") ?>" class="card border-0 shadow-sm h-100 text-decoration-none text-dark transition" style="transition: transform 0.2s;">
                 <div class="card-body text-center py-4">
                     <i class="bi bi-file-earmark-bar-graph-fill fs-1 text-success mb-3"></i>
                     <h6 class="mb-2">Reportes</h6>

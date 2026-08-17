@@ -67,6 +67,14 @@ class RelevoModel extends BaseModel
         return $this->consultar($sql);
     }
 
+    public function obtener(int $id): ?array
+    {
+        return $this->consultarUno(
+            "SELECT id_relevo, fecha_operativa, turno, id_supervisor, id_operador, id_maquina, hora_inicio, hora_fin, observaciones FROM relevos WHERE id_relevo = ?",
+            [$id]
+        );
+    }
+
     public function guardar(array $datos): bool
     {
         $sql = "
@@ -104,6 +112,40 @@ class RelevoModel extends BaseModel
         ];
 
         return $this->ejecutar($sql, $parametros);
+    }
+
+    public function actualizar(int $id, array $datos): bool
+    {
+        $horaInicio = $datos["hora_inicio"] ?? "07:00:00";
+        $horaFin = $datos["hora_fin"] ?? "15:00:00";
+        $sql = "
+            UPDATE relevos
+            SET fecha_operativa = ?, turno = ?, id_supervisor = ?, id_operador = ?,
+                id_maquina = ?, hora_inicio = ?, hora_fin = ?, horas_operativas = ?, observaciones = ?
+            WHERE id_relevo = ?
+        ";
+
+        return $this->ejecutar($sql, [
+            $datos["fecha_operativa"], $datos["turno"], (int) $datos["id_supervisor"],
+            (int) $datos["id_operador"], (int) $datos["id_maquina"], $horaInicio,
+            $horaFin, $this->calcularHoras($horaInicio, $horaFin), trim((string) ($datos["observaciones"] ?? "")), $id,
+        ]);
+    }
+
+    public function eliminar(int $id): bool
+    {
+        return $this->ejecutar("DELETE FROM relevos WHERE id_relevo = ?", [$id]);
+    }
+
+    public function existeDuplicado(array $datos): bool
+    {
+        $stmt = $this->conexion->prepare("SELECT COUNT(*) FROM relevos WHERE fecha_operativa = ? AND turno = ? AND id_supervisor = ? AND id_operador = ? AND id_maquina = ? AND hora_inicio = ? AND hora_fin = ?");
+        $stmt->execute([
+            $datos["fecha_operativa"], $datos["turno"], $datos["id_supervisor"],
+            $datos["id_operador"], $datos["id_maquina"], $datos["hora_inicio"], $datos["hora_fin"],
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
     }
 
     private function calcularHoras(string $horaInicio, string $horaFin): float

@@ -9,19 +9,13 @@ $clasificaciones = $clasificaciones ?? [];
 
 <div class="event-form-page">
 
-    <div class="page-header mb-4">
-        <div>
-            <h2>Registrar evento</h2>
-            <p>Clasifica la observación detectada para generar reportes operativos.</p>
-        </div>
-    </div>
-
     <form
         method="POST"
-        action="/SIGMA/public/index.php?controller=event&action=store"
+        action="<?= htmlspecialchars(app_route("event", "store"), ENT_QUOTES, "UTF-8") ?>"
         enctype="multipart/form-data"
         class="event-form card shadow-sm border-0"
     >
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES, "UTF-8") ?>">
         <div class="card-body p-4">
 
             <div class="row g-3">
@@ -115,8 +109,8 @@ $clasificaciones = $clasificaciones ?? [];
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Evidencia fotográfica</label>
-                    <input type="file" name="evidencia" class="form-control" accept="image/*">
+                    <label class="form-label">Evidencia</label>
+                    <input type="file" name="evidencia" class="form-control" accept="image/jpeg,image/png,image/webp,application/pdf">
                 </div>
 
                 <div class="col-md-3">
@@ -124,7 +118,7 @@ $clasificaciones = $clasificaciones ?? [];
                     <select name="estado" class="form-select">
                         <option value="Pendiente">Pendiente</option>
                         <option value="Confirmado">Confirmado</option>
-                        <option value="Cerrado">Cerrado</option>
+                        <option value="Resuelto">Resuelto</option>
                     </select>
                 </div>
 
@@ -138,7 +132,7 @@ $clasificaciones = $clasificaciones ?? [];
             </div>
 
             <div class="mt-4 d-flex justify-content-between align-items-center">
-                <a href="/SIGMA/public/index.php?controller=event&action=index" class="btn btn-outline-secondary">
+                <a href="<?= htmlspecialchars(app_route("event"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i>
                     Volver
                 </a>

@@ -8,16 +8,21 @@ $supervisores = $supervisores ?? [];
 <div class="events-page">
 
     <div class="page-header">
-        <div>
-            <h2>Eventos operativos</h2>
-            <p>Monitoreo, clasificación y evidencias por turno.</p>
-        </div>
-
-        <a href="/SIGMA/public/index.php?controller=event&action=create" class="btn btn-primary">
+        <a href="<?= htmlspecialchars(app_route("event", "import"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-outline-primary me-2">
+            <i class="bi bi-upload"></i>
+            Importar Excel
+        </a>
+        <a href="<?= htmlspecialchars(app_route("event", "create"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i>
             Nuevo evento
         </a>
     </div>
+
+        <?php if (!empty($_GET["eliminados"])): ?>
+            <div class="alert alert-success mt-3">
+                <?= (int) $_GET["eliminados"] ?> evento(s) eliminado(s) correctamente.
+            </div>
+        <?php endif; ?>
 
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
@@ -61,16 +66,27 @@ $supervisores = $supervisores ?? [];
 
                 <div class="col-md-2 d-flex gap-2">
                     <button type="submit" class="btn btn-primary w-100">Filtrar</button>
-                    <a href="/SIGMA/public/index.php?controller=event&action=index" class="btn btn-outline-secondary">Limpiar</a>
+                    <a href="<?= htmlspecialchars(app_route("event"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-outline-secondary">Limpiar</a>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="table-wrap">
+        <form method="POST" action="<?= htmlspecialchars(app_route("event", "delete"), ENT_QUOTES, "UTF-8") ?>" onsubmit="return confirmarEliminacionEventos();">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES, "UTF-8") ?>">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="seleccionarTodosEventos">
+                    <span class="form-check-label">Seleccionar todos</span>
+                </label>
+                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Eliminar seleccionados</button>
+            </div>
+
         <table class="table table-striped table-hover align-middle">
             <thead>
                 <tr>
+                    <th>Sel.</th>
                     <th>Fecha</th>
                     <th>Hora</th>
                     <th>Turno</th>
@@ -87,13 +103,14 @@ $supervisores = $supervisores ?? [];
             <tbody>
                 <?php if (empty($eventos)): ?>
                     <tr>
-                        <td colspan="11" class="text-center text-muted py-4">
+                        <td colspan="12" class="text-center text-muted py-4">
                             No hay eventos registrados con esos filtros.
                         </td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($eventos as $evento): ?>
                         <tr>
+                            <td><input class="form-check-input evento-checkbox" type="checkbox" name="ids_evento[]" value="<?= (int) ($evento["id_evento"] ?? 0) ?>"></td>
                             <td><?= htmlspecialchars($evento["fecha_evento"] ?? "-") ?></td>
                             <td><?= htmlspecialchars($evento["hora_evento"] ?? "-") ?></td>
                             <td><?= htmlspecialchars($evento["turno"] ?? "-") ?></td>
@@ -109,7 +126,7 @@ $supervisores = $supervisores ?? [];
                                 </span>
                             </td>
                             <td>
-                                <a href="/SIGMA/public/index.php?controller=event&action=show&id=<?= (int) ($evento["id_evento"] ?? 0) ?>" class="btn btn-sm btn-outline-primary">
+                                <a href="<?= htmlspecialchars(app_route("event", "show", ["id" => (int) ($evento["id_evento"] ?? 0)]), ENT_QUOTES, "UTF-8") ?>" class="btn btn-sm btn-outline-primary">
                                     Ver
                                 </a>
                             </td>
@@ -119,4 +136,20 @@ $supervisores = $supervisores ?? [];
             </tbody>
         </table>
     </div>
+        </form>
 </div>
+
+    <script>
+        document.getElementById('seleccionarTodosEventos')?.addEventListener('change', function () {
+            document.querySelectorAll('.evento-checkbox').forEach((checkbox) => checkbox.checked = this.checked);
+        });
+
+        function confirmarEliminacionEventos() {
+            const cantidad = document.querySelectorAll('.evento-checkbox:checked').length;
+            if (cantidad === 0) {
+                alert('Selecciona al menos un evento.');
+                return false;
+            }
+            return confirm(`¿Eliminar ${cantidad} evento(s) seleccionado(s)? Esta acción no se puede deshacer.`);
+        }
+    </script>

@@ -6,6 +6,20 @@ $eventosPorTurno = $eventosPorTurno ?? [];
 $operadoresTop = $operadoresTop ?? [];
 $maquinasTop = $maquinasTop ?? [];
 $horasTurno = $horasTurno ?? [];
+$eventosPorOperador = $eventosPorOperador ?? [];
+$eventosConductuales = $eventosConductuales ?? [];
+$operadorCategoria = $operadorCategoria ?? [];
+$eventosConductualesPorOperador = $eventosConductualesPorOperador ?? [];
+$horariosRiesgo = $horariosRiesgo ?? [];
+$tendenciaSemanal = $tendenciaSemanal ?? [];
+$tendenciaMensual = $tendenciaMensual ?? [];
+$horaFrecuente = $horaFrecuente ?? null;
+$horaCritica = $horaCritica ?? null;
+$operadorCritico = $operadorCritico ?? null;
+$maquinaCritica = $maquinaCritica ?? null;
+$filtros = $filtros ?? [];
+$operadoresFiltro = $operadoresFiltro ?? [];
+$supervisoresFiltro = $supervisoresFiltro ?? [];
 
 function turnoLabel(string $numero): string
 {
@@ -129,15 +143,45 @@ foreach ($todasLasEtiquetas as $idx => $etiqueta) {
     ];
 }
 
-$operadoresLabelsGrafico = json_encode($operadoresUnicos, JSON_UNESCAPED_UNICODE);
-$datasetsGraficoJson = json_encode($datasetsGrafico, JSON_UNESCAPED_UNICODE);
+$operadoresLabelsGrafico = json_encode($operadoresUnicos, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$datasetsGraficoJson = json_encode($datasetsGrafico, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+$horariosRiesgoLabels = array_map(fn($item) => sprintf("%02d:00", (int) ($item["hora"] ?? 0)), $horariosRiesgo);
+$horariosRiesgoValores = array_map(fn($item) => (int) ($item["eventos_criticos"] ?? 0), $horariosRiesgo);
+$tendenciaSemanalLabels = array_map(fn($item) => "Sem. " . ($item["semana"] ?? "-"), $tendenciaSemanal);
+$tendenciaSemanalValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $tendenciaSemanal);
+$tendenciaMensualLabels = array_map(fn($item) => $item["periodo_label"] ?? "-", $tendenciaMensual);
+$tendenciaMensualValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $tendenciaMensual);
+
+$horaFrecuenteTexto = $horaFrecuente ? sprintf("%02d:00", (int) $horaFrecuente["hora"]) : "Sin datos";
+$horaCriticaTexto = $horaCritica ? sprintf("%02d:00", (int) $horaCritica["hora"]) : "Sin datos";
+$operadorCriticoTexto = $operadorCritico["nombre"] ?? "Sin datos";
+$maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
 ?>
 
 <div class="dashboard-page">
 
-    <div class="dashboard-header">
-        <h2>Dashboard ejecutivo</h2>
-        <p>Resumen operativo, turnos, incidentes y productividad.</p>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Filtros del dashboard</h2>
+                    <p class="text-muted mb-0">Todos los indicadores y gráficas usan estos criterios.</p>
+                </div>
+                <a href="<?= htmlspecialchars(app_route("dashboardAdvanced"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-outline-secondary btn-sm">Limpiar filtros</a>
+            </div>
+            <form method="GET" action="<?= htmlspecialchars(app_route("dashboardAdvanced"), ENT_QUOTES, "UTF-8") ?>" class="row g-3 align-items-end">
+                <div class="col-md-3"><label class="form-label">Fecha específica</label><input type="date" name="fecha" value="<?= htmlspecialchars($filtros["fecha"] ?? "") ?>" class="form-control"></div>
+                <div class="col-md-2"><label class="form-label">Desde</label><input type="date" name="desde" value="<?= htmlspecialchars($filtros["desde"] ?? "") ?>" class="form-control"></div>
+                <div class="col-md-2"><label class="form-label">Hasta</label><input type="date" name="hasta" value="<?= htmlspecialchars($filtros["hasta"] ?? "") ?>" class="form-control"></div>
+                <div class="col-md-1"><label class="form-label">Mes</label><select name="mes" class="form-select"><option value="">Todos</option><?php for ($mes = 1; $mes <= 12; $mes++): ?><option value="<?= $mes ?>" <?= (string) ($filtros["mes"] ?? "") === (string) $mes ? "selected" : "" ?>><?= $mes ?></option><?php endfor; ?></select></div>
+                <div class="col-md-2"><label class="form-label">Año</label><input type="number" name="anio" min="2000" max="2100" value="<?= htmlspecialchars($filtros["anio"] ?? "") ?>" class="form-control"></div>
+                <div class="col-md-2"><label class="form-label">Turno</label><select name="turno" class="form-select"><option value="">Todos</option><?php foreach (["1" => "Turno 1", "2" => "Turno 2", "3" => "Turno 3"] as $valor => $texto): ?><option value="<?= $valor ?>" <?= (string) ($filtros["turno"] ?? "") === $valor ? "selected" : "" ?>><?= $texto ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-4"><label class="form-label">Operador</label><select name="operador" class="form-select"><option value="">Todos</option><?php foreach ($operadoresFiltro as $operador): ?><option value="<?= (int) $operador["id_operador"] ?>" <?= (string) ($filtros["operador"] ?? "") === (string) $operador["id_operador"] ? "selected" : "" ?>><?= htmlspecialchars($operador["nombre_completo"] ?? "-") ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-4"><label class="form-label">Supervisor</label><select name="supervisor" class="form-select"><option value="">Todos</option><?php foreach ($supervisoresFiltro as $supervisor): ?><option value="<?= (int) $supervisor["id_supervisor"] ?>" <?= (string) ($filtros["supervisor"] ?? "") === (string) $supervisor["id_supervisor"] ? "selected" : "" ?>><?= htmlspecialchars($supervisor["nombre_completo"] ?? "-") ?></option><?php endforeach; ?></select></div>
+                <div class="col-md-4"><button class="btn btn-primary w-100">Aplicar filtros</button></div>
+            </form>
+        </div>
     </div>
 
     <div class="kpi-grid">
@@ -183,6 +227,26 @@ $datasetsGraficoJson = json_encode($datasetsGrafico, JSON_UNESCAPED_UNICODE);
                 <strong><?= (int) ($resumen["total_criticos"] ?? 0) ?></strong>
                 <small>Requieren atención</small>
             </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon operador"><i class="bi bi-clock-history"></i></div>
+            <div class="kpi-info"><span>Horario más frecuente</span><strong><?= htmlspecialchars($horaFrecuenteTexto) ?></strong><small>Mayor volumen de eventos</small></div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon critico"><i class="bi bi-alarm"></i></div>
+            <div class="kpi-info"><span>Horario más crítico</span><strong><?= htmlspecialchars($horaCriticaTexto) ?></strong><small>Mayor concentración de riesgo</small></div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon operador"><i class="bi bi-person-exclamation"></i></div>
+            <div class="kpi-info"><span>Operador más crítico</span><strong><?= htmlspecialchars($operadorCriticoTexto) ?></strong><small>Eventos de riesgo</small></div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon maquinaria"><i class="bi bi-truck-front"></i></div>
+            <div class="kpi-info"><span>Máquina más crítica</span><strong><?= htmlspecialchars($maquinaCriticaTexto) ?></strong><small>Eventos de riesgo</small></div>
         </div>
     </div>
 
@@ -252,6 +316,27 @@ $datasetsGraficoJson = json_encode($datasetsGrafico, JSON_UNESCAPED_UNICODE);
             <div class="chart-card">
                 <h3>Horas operativas por turno</h3>
                 <div class="chart-wrap"><canvas id="hoursChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h3>Horarios de mayor riesgo operacional</h3>
+                <div class="chart-wrap"><canvas id="riskHoursChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h3>Tendencia semanal de eventos conductuales</h3>
+                <div class="chart-wrap"><canvas id="weeklyConductualChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h3>Tendencia mensual de eventos</h3>
+                <div class="chart-wrap"><canvas id="monthlyEventsChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -455,6 +540,33 @@ $datasetsGraficoJson = json_encode($datasetsGrafico, JSON_UNESCAPED_UNICODE);
                 plugins: { legend: { display: false } },
                 scales: { y: { beginAtZero: true } }
             }
+        });
+
+        new Chart(document.getElementById('riskHoursChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($horariosRiesgoLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: [{ label: 'Eventos críticos', data: <?= json_encode($horariosRiesgoValores) ?>, backgroundColor: '#EF4444', borderRadius: 6 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+
+        new Chart(document.getElementById('weeklyConductualChart'), {
+            type: 'line',
+            data: {
+                labels: <?= json_encode($tendenciaSemanalLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: [{ label: 'Eventos conductuales', data: <?= json_encode($tendenciaSemanalValores) ?>, borderColor: '#F59E0B', backgroundColor: 'rgba(245, 158, 11, .14)', fill: true, tension: .3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+
+        new Chart(document.getElementById('monthlyEventsChart'), {
+            type: 'line',
+            data: {
+                labels: <?= json_encode($tendenciaMensualLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: [{ label: 'Eventos', data: <?= json_encode($tendenciaMensualValores) ?>, borderColor: '#00A7A3', backgroundColor: 'rgba(0, 167, 163, .14)', fill: true, tension: .3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
         });
     });
 </script>

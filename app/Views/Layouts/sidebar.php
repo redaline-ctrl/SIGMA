@@ -1,6 +1,8 @@
 <?php
 $activeController = $_GET['controller'] ?? 'home';
 $activeController = preg_replace('/[^a-zA-Z0-9_-]/', '', $activeController);
+$rolUsuario = strtolower((string) ($_SESSION["rol"] ?? ""));
+$soloConsulta = in_array($rolUsuario, ["gerente", "rh"], true);
 ?>
 
 <aside class="sigma-sidebar">
@@ -25,7 +27,7 @@ $activeController = preg_replace('/[^a-zA-Z0-9_-]/', '', $activeController);
     <nav class="sidebar-menu">
 
         <a
-            href="/SIGMA/public/index.php?controller=home&action=index"
+            href="<?= htmlspecialchars(app_route("home"), ENT_QUOTES, "UTF-8") ?>"
             class="sidebar-item <?= $activeController === 'home' ? 'active' : '' ?>"
         >
 
@@ -36,7 +38,7 @@ $activeController = preg_replace('/[^a-zA-Z0-9_-]/', '', $activeController);
         </a>
 
 
-        <a href="/SIGMA/public/index.php?controller=dashboardAdvanced&action=index" class="sidebar-item <?= $activeController === 'dashboardAdvanced' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars(app_route("dashboardAdvanced"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'dashboardAdvanced' ? 'active' : '' ?>">
 
             <i class="bi bi-bar-chart-line-fill"></i>
 
@@ -44,59 +46,71 @@ $activeController = preg_replace('/[^a-zA-Z0-9_-]/', '', $activeController);
 
         </a>
 
+        <a href="<?= htmlspecialchars(app_route("desempeno"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'desempeno' ? 'active' : '' ?>">
+            <i class="bi bi-graph-up-arrow"></i>
+            <span>Desempeño</span>
+        </a>
 
-        <a href="/SIGMA/public/index.php?controller=event&action=index" class="sidebar-item <?= $activeController === 'event' ? 'active' : '' ?>">
+
+        <?php if (!$soloConsulta): ?><a href="<?= htmlspecialchars(app_route("event"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'event' ? 'active' : '' ?>">
 
             <i class="bi bi-exclamation-triangle-fill"></i>
 
             <span>Eventos</span>
 
-        </a>
+        </a><?php endif; ?>
 
 
-        <a href="/SIGMA/public/index.php?controller=relevo&action=index" class="sidebar-item <?= $activeController === 'relevo' ? 'active' : '' ?>">
+        <?php if (!$soloConsulta): ?><a href="<?= htmlspecialchars(app_route("relevo"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'relevo' ? 'active' : '' ?>">
 
             <i class="bi bi-arrow-repeat"></i>
 
             <span>Relevos</span>
 
-        </a>
+        </a><?php endif; ?>
 
 
-        <a href="/SIGMA/public/index.php?controller=operador&action=index" class="sidebar-item <?= $activeController === 'operador' ? 'active' : '' ?>">
+        <?php if (!$soloConsulta): ?><a href="<?= htmlspecialchars(app_route("operador"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'operador' ? 'active' : '' ?>">
 
             <i class="bi bi-people-fill"></i>
 
             <span>Operadores</span>
 
-        </a>
+        </a><?php endif; ?>
 
 
-        <a href="/SIGMA/public/index.php?controller=maquina&action=index" class="sidebar-item <?= $activeController === 'maquina' ? 'active' : '' ?>">
+        <?php if (!$soloConsulta): ?><a href="<?= htmlspecialchars(app_route("maquina"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'maquina' ? 'active' : '' ?>">
 
             <i class="bi bi-truck-front-fill"></i>
 
             <span>Maquinaria</span>
 
-        </a>
+        </a><?php endif; ?>
 
 
-        <a href="/SIGMA/public/index.php?controller=clasificacion&action=index" class="sidebar-item <?= $activeController === 'clasificacion' ? 'active' : '' ?>">
+        <?php if (!$soloConsulta): ?><a href="<?= htmlspecialchars(app_route("clasificacion"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'clasificacion' ? 'active' : '' ?>">
 
             <i class="bi bi-tags-fill"></i>
 
             <span>Clasificaciones</span>
 
-        </a>
+        </a><?php endif; ?>
 
 
-        <a href="/SIGMA/public/index.php?controller=reporte&action=index" class="sidebar-item <?= $activeController === 'reporte' ? 'active' : '' ?>">
+        <a href="<?= htmlspecialchars(app_route("reporte"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'reporte' ? 'active' : '' ?>">
 
             <i class="bi bi-file-earmark-bar-graph-fill"></i>
 
             <span>Reportes</span>
 
         </a>
+
+        <?php if ($rolUsuario === "administrador"): ?>
+        <a href="<?= htmlspecialchars(app_route("usuario"), ENT_QUOTES, "UTF-8") ?>" class="sidebar-item <?= $activeController === 'usuario' ? 'active' : '' ?>">
+            <i class="bi bi-person-gear"></i>
+            <span>Usuarios</span>
+        </a>
+        <?php endif; ?>
 
     </nav>
 

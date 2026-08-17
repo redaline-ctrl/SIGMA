@@ -275,4 +275,80 @@ class DashboardAdvancedModel extends BaseModel
 
         return $this->consultar($sql);
     }
+
+    public function horariosRiesgoOperacional(): array
+    {
+        $sql = "
+            SELECT
+                HOUR(e.hora_evento) AS hora,
+                COUNT(*) AS total_eventos,
+                SUM(CASE WHEN et.nombre_etiqueta IN (
+                    'Fatiga crítica', 'Fatiga moderada', 'Uso del teléfono confirmado',
+                    'Uso de cigarro', 'Obstrucción de cámara', 'Desconexión de la cámara'
+                ) THEN 1 ELSE 0 END) AS eventos_criticos
+            FROM eventos e
+            LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+            GROUP BY HOUR(e.hora_evento)
+            ORDER BY eventos_criticos DESC, total_eventos DESC, hora ASC
+        ";
+
+        return $this->consultar($sql);
+    }
+
+    public function tendenciaConductualSemanal(): array
+    {
+        $sql = "
+            SELECT
+                YEARWEEK(e.fecha_evento, 1) AS semana_orden,
+                DATE_FORMAT(MIN(e.fecha_evento), '%d/%m/%Y') AS semana,
+                COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+            WHERE et.nombre_etiqueta IN (
+                'Fatiga crítica', 'Fatiga moderada', 'Uso del teléfono confirmado',
+                'Uso del radio', 'Volante suelto', 'Lectura de indicadores',
+                'Maniobra', 'Estacionado', 'Anotaciones durante operación',
+                'Desconexión de la cámara', 'Obstrucción de cámara', 'Uso de cigarro'
+            )
+            GROUP BY YEARWEEK(e.fecha_evento, 1)
+            ORDER BY semana_orden ASC
+        ";
+
+        return $this->consultar($sql);
+    }
+
+    public function tendenciaEventosMensual(): array
+    {
+        $sql = "
+            SELECT
+                DATE_FORMAT(fecha_evento, '%Y-%m') AS periodo,
+                DATE_FORMAT(fecha_evento, '%m/%Y') AS periodo_label,
+                COUNT(*) AS total
+            FROM eventos
+            GROUP BY DATE_FORMAT(fecha_evento, '%Y-%m'), DATE_FORMAT(fecha_evento, '%m/%Y')
+            ORDER BY periodo ASC
+        ";
+
+        return $this->consultar($sql);
+    }
+
+    public function horaMasFrecuente(): ?array
+    {
+        return $this->consultarUno("SELECT HOUR(hora_evento) AS hora, COUNT(*) AS total FROM eventos GROUP BY HOUR(hora_evento) ORDER BY total DESC, hora ASC LIMIT 1");
+    }
+
+    public function horaMasCritica(): ?array
+    {
+        return $this->consultarUno("SELECT HOUR(e.hora_evento) AS hora, COUNT(*) AS total FROM eventos e INNER JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta WHERE et.nombre_etiqueta IN ('Fatiga crítica', 'Fatiga moderada', 'Uso del teléfono confirmado', 'Uso de cigarro', 'Obstrucción de cámara', 'Desconexión de la cámara') GROUP BY HOUR(e.hora_evento) ORDER BY total DESC, hora ASC LIMIT 1");
+    }
+
+    public function operadorMasCritico(): ?array
+    {
+        return $this->consultarUno("SELECT o.nombre_completo AS nombre, COUNT(*) AS total FROM eventos e INNER JOIN operadores o ON o.id_operador = e.id_operador INNER JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta WHERE et.nombre_etiqueta IN ('Fatiga crítica', 'Fatiga moderada', 'Uso del teléfono confirmado', 'Uso de cigarro', 'Obstrucción de cámara', 'Desconexión de la cámara') GROUP BY o.id_operador, o.nombre_completo ORDER BY total DESC, nombre ASC LIMIT 1");
+    }
+
+    public function maquinaMasCritica(): ?array
+    {
+        return $this->consultarUno("SELECT m.nombre_maquina AS nombre, COUNT(*) AS total FROM eventos e INNER JOIN maquinas m ON m.id_maquina = e.id_maquina INNER JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta WHERE et.nombre_etiqueta IN ('Fatiga crítica', 'Fatiga moderada', 'Uso del teléfono confirmado', 'Uso de cigarro', 'Obstrucción de cámara', 'Desconexión de la cámara') GROUP BY m.id_maquina, m.nombre_maquina ORDER BY total DESC, nombre ASC LIMIT 1");
+    }
 }

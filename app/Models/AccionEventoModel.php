@@ -65,12 +65,12 @@ class AccionEventoModel extends BaseModel
     {
         $sql = "
             CREATE TABLE IF NOT EXISTS acciones_evento (
-                id_accion INT AUTO_INCREMENT PRIMARY KEY,
-                id_evento INT NOT NULL,
+                id_accion INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                id_evento INT UNSIGNED NOT NULL,
                 tipo_accion VARCHAR(50) DEFAULT 'comentario',
                 descripcion TEXT,
                 estado_nuevo VARCHAR(50),
-                usuario_accion INT,
+                usuario_accion INT UNSIGNED,
                 fecha_accion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (id_evento) REFERENCES eventos(id_evento) ON DELETE CASCADE,
                 FOREIGN KEY (usuario_accion) REFERENCES supervisores(id_supervisor)

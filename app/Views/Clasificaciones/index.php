@@ -3,13 +3,6 @@ $clasificaciones = $clasificaciones ?? [];
 ?>
 
 <div class="page">
-    <div class="page-header mb-4">
-        <div>
-            <h2>Clasificaciones</h2>
-            <p>Listado de categorías de eventos.</p>
-        </div>
-    </div>
-
     <div class="table-wrap">
         <table class="table table-striped table-hover align-middle">
             <thead>

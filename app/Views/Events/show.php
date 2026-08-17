@@ -7,12 +7,7 @@ $estados = $estados ?? [];
 
 <div class="events-page">
     <div class="page-header mb-4">
-        <div>
-            <h2>Detalle del evento</h2>
-            <p>Seguimiento operativo y evidencia asociada.</p>
-        </div>
-
-        <a href="/SIGMA/public/index.php?controller=event&action=index" class="btn btn-outline-secondary">
+        <a href="<?= htmlspecialchars(app_route("event"), ENT_QUOTES, "UTF-8") ?>" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i>
             Volver
         </a>
@@ -139,13 +134,20 @@ $estados = $estados ?? [];
                     <?php
                     $observaciones = (string) ($evento["observaciones"] ?? "");
                     $rutaEvidencia = null;
-                    if (preg_match('/Evidencia:\s*(\/SIGMA\/storage\/evidencias\/[^\s]+)/i', $observaciones, $coincidencias)) {
+                    if (preg_match('/Evidencia:\s*(\S+)/i', $observaciones, $coincidencias)) {
                         $rutaEvidencia = $coincidencias[1];
                     }
                     ?>
 
                     <?php if ($rutaEvidencia): ?>
-                        <img src="<?= htmlspecialchars($rutaEvidencia) ?>" class="img-fluid rounded border mb-3" alt="Evidencia del evento">
+                        <?php if (preg_match('/\.pdf(?:$|\?)/i', $rutaEvidencia)): ?>
+                            <a href="<?= htmlspecialchars($rutaEvidencia, ENT_QUOTES, "UTF-8") ?>" target="_blank" rel="noopener" class="btn btn-outline-danger">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                                Abrir evidencia PDF
+                            </a>
+                        <?php else: ?>
+                            <img src="<?= htmlspecialchars($rutaEvidencia, ENT_QUOTES, "UTF-8") ?>" class="img-fluid rounded border mb-3" alt="Evidencia del evento">
+                        <?php endif; ?>
                     <?php else: ?>
                         <div class="text-center text-muted border rounded p-4 bg-light">
                             <i class="bi bi-image fs-1 d-block mb-2"></i>
@@ -165,7 +167,8 @@ $estados = $estados ?? [];
                     <h5 class="mb-0">Registrar acción</h5>
                 </div>
                 <div class="card-body p-4">
-                    <form method="POST" action="/SIGMA/public/index.php?controller=event&action=update">
+                    <form method="POST" action="<?= htmlspecialchars(app_route("event", "update"), ENT_QUOTES, "UTF-8") ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION["csrf_token"] ?? "", ENT_QUOTES, "UTF-8") ?>">
                         <input type="hidden" name="id_evento" value="<?= (int) ($evento["id_evento"] ?? 0) ?>">
 
                         <div class="mb-3">

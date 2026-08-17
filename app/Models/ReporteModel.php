@@ -4,6 +4,35 @@ require_once __DIR__ . "/BaseModel.php";
 
 class ReporteModel extends BaseModel
 {
+    public function __construct(PDO $conexion)
+    {
+        parent::__construct($conexion);
+        $this->conexion->exec("CREATE TABLE IF NOT EXISTS reportes_historial (
+            id_historial INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            id_usuario INT UNSIGNED NULL,
+            usuario VARCHAR(100) NOT NULL,
+            rol VARCHAR(50) NOT NULL,
+            fecha_inicio DATE NOT NULL,
+            fecha_fin DATE NOT NULL,
+            periodo VARCHAR(20) NOT NULL,
+            fecha_generacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_reportes_historial_fecha (fecha_generacion)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    public function registrarHistorial(array $datos): bool
+    {
+        return $this->ejecutar(
+            "INSERT INTO reportes_historial (id_usuario, usuario, rol, fecha_inicio, fecha_fin, periodo) VALUES (?, ?, ?, ?, ?, ?)",
+            [$datos["id_usuario"] ?? null, $datos["usuario"] ?? "-", $datos["rol"] ?? "-", $datos["fecha_inicio"], $datos["fecha_fin"], $datos["periodo"]]
+        );
+    }
+
+    public function historial(): array
+    {
+        return $this->consultar("SELECT id_historial, usuario, rol, fecha_inicio, fecha_fin, periodo, fecha_generacion FROM reportes_historial ORDER BY fecha_generacion DESC LIMIT 100");
+    }
+
     public function resumenDiario(string $fecha): array
     {
         $sql = "
@@ -37,20 +66,25 @@ class ReporteModel extends BaseModel
     {
         $sql = "
             SELECT
-                COUNT(*) AS total_eventos,
-                SUM(CASE WHEN turno = '1' THEN 1 ELSE 0 END) AS turno_1,
-                SUM(CASE WHEN turno = '2' THEN 1 ELSE 0 END) AS turno_2,
-                SUM(CASE WHEN turno = '3' THEN 1 ELSE 0 END) AS turno_3,
-                SUM(CASE WHEN e.id_etiqueta IS NOT NULL AND et.nombre_etiqueta IN ('Fatiga crítica', 'Uso del teléfono confirmado') THEN 1 ELSE 0 END) AS criticos,
-                COUNT(DISTINCT r.id_relevo) AS relevos,
-                ROUND(COALESCE(SUM(r.horas_operativas), 0), 2) AS horas_operativas
-            FROM eventos e
-            LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
-            LEFT JOIN relevos r ON DATE(r.fecha_operativa) BETWEEN ? AND ?
-            WHERE DATE(e.fecha_evento) BETWEEN ? AND ?
+                (SELECT COUNT(*) FROM eventos WHERE DATE(fecha_evento) BETWEEN ? AND ?) AS total_eventos,
+                (SELECT COUNT(*) FROM eventos WHERE DATE(fecha_evento) BETWEEN ? AND ? AND turno = '1') AS turno_1,
+                (SELECT COUNT(*) FROM eventos WHERE DATE(fecha_evento) BETWEEN ? AND ? AND turno = '2') AS turno_2,
+                (SELECT COUNT(*) FROM eventos WHERE DATE(fecha_evento) BETWEEN ? AND ? AND turno = '3') AS turno_3,
+                (SELECT COUNT(*) FROM eventos e
+                 INNER JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+                 WHERE DATE(e.fecha_evento) BETWEEN ? AND ?
+                 AND et.nombre_etiqueta IN ('Fatiga crítica', 'Uso del teléfono confirmado')) AS criticos,
+                (SELECT COUNT(*) FROM relevos WHERE DATE(fecha_operativa) BETWEEN ? AND ?) AS relevos,
+                (SELECT ROUND(COALESCE(SUM(horas_operativas), 0), 2) FROM relevos WHERE DATE(fecha_operativa) BETWEEN ? AND ?) AS horas_operativas
         ";
 
-        $resultado = $this->consultarUno($sql, [$inicio, $fin, $inicio, $fin]);
+        $parametros = [];
+        for ($i = 0; $i < 7; $i++) {
+            $parametros[] = $inicio;
+            $parametros[] = $fin;
+        }
+
+        $resultado = $this->consultarUno($sql, $parametros);
 
         return $resultado ?? [
             "total_eventos" => 0,
@@ -173,8 +207,33 @@ class ReporteModel extends BaseModel
         return array_slice($result, 0, $limit);
     }
 
+    public function relevosPeriodo(string $inicio, string $fin): array
+    {
+        $sql = "
+            SELECT
+                r.fecha_operativa,
+                r.turno,
+                r.hora_inicio,
+                r.hora_fin,
+                r.horas_operativas,
+                o.nombre_completo AS operador,
+                m.nombre_maquina AS maquina,
+                s.nombre_completo AS supervisor
+            FROM relevos r
+            LEFT JOIN operadores o ON o.id_operador = r.id_operador
+            LEFT JOIN maquinas m ON m.id_maquina = r.id_maquina
+            LEFT JOIN supervisores s ON s.id_supervisor = r.id_supervisor
+            WHERE DATE(r.fecha_operativa) BETWEEN ? AND ?
+            ORDER BY r.fecha_operativa ASC, r.hora_inicio ASC
+        ";
+
+        return $this->consultar($sql, [$inicio, $fin]);
+    }
+
     public function eventosRecientes(int $limit = 10): array
     {
+        $limit = max(1, min($limit, 100));
+
         $sql = "
             SELECT
                 e.id_evento,
@@ -192,9 +251,9 @@ class ReporteModel extends BaseModel
             LEFT JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
             LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
             ORDER BY e.fecha_evento DESC, e.hora_evento DESC
-            LIMIT ?
+            LIMIT {$limit}
         ";
 
-        return $this->consultar($sql, [$limit]);
+        return $this->consultar($sql);
     }
 }
