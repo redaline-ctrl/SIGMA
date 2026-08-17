@@ -17,7 +17,7 @@ RUN printf "<Directory /var/www/html/public>\n    Options Indexes FollowSymLinks
 
 COPY . /var/www/html/
 
-# Limpia sintaxis de MySQL (comillas ``, LOCK/UNLOCK) e importa a Postgres
-CMD ["sh", "-c", "if [ -n \"$DB_HOST\" ]; then sed -i 's/`//g; /LOCK TABLES/d; /UNLOCK TABLES/d' /var/www/html/sigma_db.sql && psql \"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE\" -f /var/www/html/sigma_db.sql || true; fi && apache2-foreground"]
+# Limpia sintaxis de MySQL (comillas, LOCK, unsigned, AUTO_INCREMENT) e importa a Postgres
+CMD ["sh", "-c", "if [ -n \"$DB_HOST\" ]; then sed -i 's/`//g; /LOCK TABLES/d; /UNLOCK TABLES/d; s/unsigned//g; s/AUTO_INCREMENT//g' /var/www/html/sigma_db.sql && psql \"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE\" -f /var/www/html/sigma_db.sql || true; fi && apache2-foreground"]
 
 EXPOSE 80
