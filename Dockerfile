@@ -17,7 +17,7 @@ RUN printf "<Directory /var/www/html/public>\n    Options Indexes FollowSymLinks
 
 COPY . /var/www/html/
 
-# Script de arranque: importa la base de datos si existe DB_HOST y luego inicia Apache
-CMD ["sh", "-c", "if [ -n \"$DB_HOST\" ]; then PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USERNAME -d $DB_DATABASE -f /var/www/html/sigma_db.sql || true; fi && apache2-foreground"]
+# Importar la base de datos inyectando la contraseña en la conexión de psql
+CMD ["sh", "-c", "if [ -n \"$DB_HOST\" ]; then psql \"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE\" -f /var/www/html/sigma_db.sql || true; fi && apache2-foreground"]
 
 EXPOSE 80
