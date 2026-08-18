@@ -4,8 +4,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libzip-dev \
     && docker-php-ext-install pdo_mysql zip \
     && rm -rf /var/lib/apt/lists/* \
-    && a2dismod mpm_event mpm_worker mpm_prefork || true \
-    && a2enmod mpm_prefork rewrite
+    && rm -f /etc/apache2/mods-enabled/mpm_*.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_*.conf \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf \
+    && a2enmod rewrite
 
 COPY . /var/www/sigma/
 
@@ -24,4 +27,4 @@ WORKDIR /var/www/sigma
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["bash", "-c", "echo '=== MPM CONFIGURADOS ==='; ls -la /etc/apache2/mods-enabled/*mpm* 2>/dev/null || true; echo '=== LOADMODULE MPM ==='; grep -RniE '^[[:space:]]*LoadModule[[:space:]]+mpm_' /etc/apache2 2>/dev/null || true; echo '=== APACHE CHECK ==='; apache2ctl -t; echo '=== ARRANCANDO APACHE ==='; exec apache2-foreground"]
