@@ -1,23 +1,27 @@
-FROM php:8.2-apache
+FROM php:8.3-apache
 
-# Instalar extensiones y cliente de PostgreSQL
-RUN apt-get update && apt-get install -y libpq-dev postgresql-client \
-    && docker-php-ext-install pdo pdo_pgsql pdo_mysql mysqli
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libzip-dev \
+    && docker-php-ext-install pdo_mysql zip \
+    && rm -rf /var/lib/apt/lists/* \
+    && (a2dismod mpm_event || true) \
+    && (a2dismod mpm_worker || true) \
+    && (a2dismod mpm_prefork || true) \
+    && a2enmod mpm_prefork rewrite
 
-# Habilitar mod_rewrite
-RUN a2enmod rewrite
+COPY . /var/www/sigma/
 
-# Configurar DocumentRoot a /public
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri 's!/var/www/html!/var/www/sigma/public!g' \
+    /etc/apache2/sites-available/000-default.conf \
+    /etc/apache2/apache2.conf \
+    && printf '<Directory /var/www/sigma/public>\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>\n' \
+    > /etc/apache2/conf-available/sigma.conf \
+    && a2enconf sigma \
+    && chown -R www-data:www-data /var/www/sigma/storage
 
-# Permisos de Apache
-RUN printf "<Directory /var/www/html/public>\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted\n</Directory>\n" >> /etc/apache2/apache2.conf
-
-COPY . /var/www/html/
-
-# Limpia sintaxis de MySQL (comillas, LOCK, unsigned, AUTO_INCREMENT) e importa a Postgres
-CMD ["sh", "-c", "if [ -n \"$DB_HOST\" ]; then sed -i 's/`//g; /LOCK TABLES/d; /UNLOCK TABLES/d; s/unsigned//g; s/AUTO_INCREMENT//g' /var/www/html/sigma_db.sql && psql \"postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE\" -f /var/www/html/sigma_db.sql || true; fi && apache2-foreground"]
+WORKDIR /var/www/sigma
 
 EXPOSE 80
