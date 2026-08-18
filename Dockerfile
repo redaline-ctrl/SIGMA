@@ -1,16 +1,10 @@
-FROM php:8.3-cli
-
-RUN apt-get update && apt-get install -y libpng-dev libzip-dev unzip git \
-    && docker-php-ext-install pdo_mysql gd zip
-
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-WORKDIR /app
-
+FROM php:8.3-apache
+RUN apt-get update && apt-get install -y libpng-dev libzip-dev libonig-dev \
+    && docker-php-ext-install pdo_mysql gd zip mbstring
+RUN a2enmod rewrite
+WORKDIR /var/www/html
 COPY . .
-
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-RUN chmod -R 775 storage bootstrap/cache
-
-CMD php artisan serve --host=0.0.0.0 --port=$PORT
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
+CMD sed -i "s/80/${PORT}/g" /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf && apache2-foreground
