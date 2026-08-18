@@ -29,5 +29,8 @@ function app_route(string $controller, string $action = "index", array $query = 
         "action" => $action,
     ], $query);
 
-    return app_url("/public/index.php?" . http_build_query($query));
+    $isRailway = getenv("SIGMA_DB_HOST") !== false;
+    $routeFile = $isRailway ? "/index.php?" : "/public/index.php?";
+    
+    return app_url($routeFile . http_build_query($query));
 }
