@@ -3,7 +3,18 @@ FROM php:8.3-apache
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libzip-dev \
     && docker-php-ext-install pdo_mysql zip \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_prefork.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_prefork.conf \
+    \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
+    && ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf \
+    && a2enmod rewrite
 
 COPY . /var/www/sigma/
 
@@ -22,4 +33,4 @@ WORKDIR /var/www/sigma
 
 EXPOSE 80
 
-CMD ["bash", "-c", "echo '=== MODULOS MPM ==='; grep -RniE '^[[:space:]]*LoadModule[[:space:]]+mpm_' /etc/apache2 || true; echo '=== MPM ENABLED ==='; ls -la /etc/apache2/mods-enabled/*mpm* 2>/dev/null || true; echo '=== APACHE MODULES ==='; apache2ctl -M 2>&1 || true; echo '=== ARRANCANDO APACHE ==='; exec apache2-foreground"]
+CMD ["apache2-foreground"]
