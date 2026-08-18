@@ -22,4 +22,4 @@ WORKDIR /var/www/sigma
 
 EXPOSE 80
 
-CMD ["apache2-foreground"]
+CMD ["bash", "-c", "echo '=== MODULOS MPM ==='; grep -RniE '^[[:space:]]*LoadModule[[:space:]]+mpm_' /etc/apache2 || true; echo '=== MPM ENABLED ==='; ls -la /etc/apache2/mods-enabled/*mpm* 2>/dev/null || true; echo '=== APACHE MODULES ==='; apache2ctl -M 2>&1 || true; echo '=== ARRANCANDO APACHE ==='; exec apache2-foreground"]
