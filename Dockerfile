@@ -4,9 +4,13 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libzip-dev \
     && docker-php-ext-install pdo_mysql zip \
     && rm -rf /var/lib/apt/lists/* \
-    && (a2dismod mpm_event || true) \
-    && (a2dismod mpm_worker || true) \
-    && (a2dismod mpm_prefork || true) \
+    && a2dismod mpm_event mpm_worker mpm_prefork || true \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_prefork.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_prefork.conf \
     && a2enmod mpm_prefork rewrite
 
 COPY . /var/www/sigma/
