@@ -155,16 +155,26 @@ $controllerFile =
 // VERIFICAR CONTROLADOR
 //==================================================
 
-if (!file_exists($controllerFile)) {
+$basePath = __DIR__ . "/../app/Controllers/";
+$posiblesRutas = [
+    $basePath . $controllerName . ".php",
+    $basePath . $controller . "/" . $controllerName . ".php",
+    $basePath . strtolower($controller) . "/" . $controllerName . ".php",
+    $basePath . ucfirst($controller) . "/" . $controllerName . ".php",
+];
 
-    http_response_code(404);
-
-    die(
-        "No existe el controlador: "
-        . htmlspecialchars($controllerName)
-    );
+$controllerFile = null;
+foreach ($posiblesRutas as $ruta) {
+    if (file_exists($ruta)) {
+        $controllerFile = $ruta;
+        break;
+    }
 }
 
+if ($controllerFile === null) {
+    http_response_code(404);
+    die("No existe el controlador: " . htmlspecialchars($controllerName) . " - Buscado en Controllers/");
+}
 
 //==================================================
 // CARGAR CONTROLADOR
