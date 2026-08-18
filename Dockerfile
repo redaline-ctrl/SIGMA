@@ -29,6 +29,4 @@ RUN sed -ri 's!/var/www/html!/var/www/sigma/public!g' \
 
 WORKDIR /var/www/sigma
 
-EXPOSE 80
-
 CMD ["bash", "-c", "echo '=== MPM ENABLED ==='; ls -la /etc/apache2/mods-enabled/*mpm* 2>/dev/null || true; echo '=== LOADMODULE MPM ==='; grep -RniE '^[[:space:]]*LoadModule[[:space:]]+mpm_' /etc/apache2/mods-enabled 2>/dev/null || true; echo '=== APACHE CHECK ==='; apache2ctl -t; echo '=== ARRANCANDO APACHE ==='; exec apache2-foreground"]
