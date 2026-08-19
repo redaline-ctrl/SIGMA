@@ -89,13 +89,23 @@ foreach ($eventosPorTipoEtiquetaPorOperador as $item) {
     $operador = (string) ($item["operador"] ?? "Sin operador");
     $tipo = sigmaNormalizeChartLabel((string) ($item["tipo_evento"] ?? "Sin tipo"));
     $etiqueta = sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "Sin etiqueta"));
+    $clasificacion = strtolower(trim((string) ($item["clasificacion"] ?? "")));
     $total = (int) ($item["total"] ?? 0);
     $tiposPorOperador[$operador][$tipo] = ($tiposPorOperador[$operador][$tipo] ?? 0) + $total;
-    $tipoEventoDetalle[$operador][$tipo][] = [
-        'operador' => $operador,
-        'etiqueta' => $etiqueta,
-        'total' => $total,
-    ];
+    if (!isset($tipoEventoDetalle[$operador][$tipo][$etiqueta])) {
+        $tipoEventoDetalle[$operador][$tipo][$etiqueta] = [
+            'etiqueta' => $etiqueta,
+            'conductuales' => 0,
+            'registrados' => 0,
+            'total' => 0,
+        ];
+    }
+    if ($clasificacion === 'conductual') {
+        $tipoEventoDetalle[$operador][$tipo][$etiqueta]['conductuales'] += $total;
+    } else {
+        $tipoEventoDetalle[$operador][$tipo][$etiqueta]['registrados'] += $total;
+    }
+    $tipoEventoDetalle[$operador][$tipo][$etiqueta]['total'] += $total;
     if (!in_array($operador, $operadoresTipoLabels, true)) {
         $operadoresTipoLabels[] = $operador;
     }
@@ -103,6 +113,10 @@ foreach ($eventosPorTipoEtiquetaPorOperador as $item) {
         $tiposEventoLabels[] = $tipo;
     }
 }
+$tipoEventoDetalle = array_map(
+    static fn(array $tipos) => array_map('array_values', $tipos),
+    $tipoEventoDetalle
+);
 $tipoEventoDetalleJson = json_encode($tipoEventoDetalle, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 $tiposPorOperadorDatasets = [];
 $coloresTiposEvento = ['#1D70B8', '#00A7A3', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B', '#14B8A6'];
@@ -398,7 +412,7 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
-                            <thead><tr><th>Etiqueta</th><th>Operador</th><th class="text-end">Eventos</th></tr></thead>
+                            <thead><tr><th>Etiqueta</th><th>Operador</th><th class="text-end">Conductuales</th><th class="text-end">Registrados</th><th class="text-end">Total</th></tr></thead>
                             <tbody id="eventTypeDetailBody"></tbody>
                         </table>
                     </div>
@@ -600,6 +614,8 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
                         <tr>
                             <td>${escapeHtml(item.etiqueta)}</td>
                             <td>${escapeHtml(item.operador)}</td>
+                            <td class="text-end fw-semibold text-danger">${escapeHtml(item.conductuales)}</td>
+                            <td class="text-end fw-semibold text-success">${escapeHtml(item.registrados)}</td>
                             <td class="text-end fw-semibold">${escapeHtml(item.total)}</td>
                         </tr>
                     `).join('');

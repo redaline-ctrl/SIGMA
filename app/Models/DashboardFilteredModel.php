@@ -297,16 +297,19 @@ class DashboardFilteredModel extends BaseModel
     {
         [$where, $params] = $this->eventFilter($f);
         $etiqueta = "COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta')";
+        $clasificacion = "COALESCE(NULLIF(TRIM(c.nombre_clasificacion), ''), 'Sin clasificación')";
         return $this->consultar(
             "SELECT o.nombre_completo AS operador, te.nombre_evento AS tipo_evento,
-                {$etiqueta} AS etiqueta, COUNT(e.id_evento) AS total
+                {$etiqueta} AS etiqueta, {$clasificacion} AS clasificacion,
+                COUNT(e.id_evento) AS total
             FROM eventos e
             INNER JOIN operadores o ON o.id_operador = e.id_operador
             INNER JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
             LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
             WHERE {$where}
             GROUP BY o.id_operador, o.nombre_completo, te.id_tipo_evento,
-                 te.nombre_evento, {$etiqueta}
+                 te.nombre_evento, {$etiqueta}, {$clasificacion}
             ORDER BY o.nombre_completo ASC, total DESC, te.nombre_evento ASC",
             $params
         );
