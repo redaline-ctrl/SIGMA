@@ -27,6 +27,23 @@ class DashboardAdvancedController extends BaseController
             "supervisor" => $this->entero($_GET["supervisor"] ?? "", 1),
         ];
 
+        $operadoresMayorRiesgo = array_slice(
+            $this->dashboard->getConductualesPorOperador($filtros),
+            0,
+            5
+        );
+        $operadoresMejorDesempeno = $this->dashboard->getDetalleOperadorCompleto($filtros);
+        usort($operadoresMejorDesempeno, static function (array $a, array $b): int {
+            $conductualesA = (int) ($a["conductuales"] ?? 0);
+            $conductualesB = (int) ($b["conductuales"] ?? 0);
+            if ($conductualesA !== $conductualesB) {
+                return $conductualesA <=> $conductualesB;
+            }
+
+            return (int) ($b["total"] ?? 0) <=> (int) ($a["total"] ?? 0);
+        });
+        $operadoresMejorDesempeno = array_slice($operadoresMejorDesempeno, 0, 5);
+
         $datosFiltrados = [
             "resumen" => $this->dashboard->resumenGeneral($filtros),
             "totalesClasificacion" => $this->dashboard->getTotalesClasificacion($filtros),
@@ -38,8 +55,10 @@ class DashboardAdvancedController extends BaseController
             "eventosPorTipo" => $this->dashboard->eventosPorTipo($filtros),
             "eventosPorEtiqueta" => $this->dashboard->eventosPorEtiqueta($filtros),
             "eventosPorTipoPorOperador" => $this->dashboard->eventosPorTipoPorOperador($filtros),
+            "eventosPorTipoEtiquetaPorOperador" => $this->dashboard->eventosPorTipoPorOperador($filtros),
             "eventosPorTurno" => $this->dashboard->getEventosPorTurno($filtros),
-            "operadoresTop" => $this->dashboard->operadoresConMasEventos($filtros),
+            "operadoresMayorRiesgo" => $operadoresMayorRiesgo,
+            "operadoresMejorDesempeno" => $operadoresMejorDesempeno,
             "maquinasTop" => $this->dashboard->maquinasConMasEventos($filtros),
             "horasTurno" => $this->dashboard->horasOperativasPorTurno($filtros),
             "eventosPorOperador" => $this->dashboard->eventosPorOperador($filtros),

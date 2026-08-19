@@ -10,8 +10,10 @@ $detalleConductualPorEtiqueta = $detalleConductualPorEtiqueta ?? [];
 $eventosPorTipo = $eventosPorTipo ?? [];
 $eventosPorEtiqueta = $eventosPorEtiqueta ?? [];
 $eventosPorTipoPorOperador = $eventosPorTipoPorOperador ?? [];
+$eventosPorTipoEtiquetaPorOperador = $eventosPorTipoEtiquetaPorOperador ?? [];
 $eventosPorTurno = $eventosPorTurno ?? [];
-$operadoresTop = $operadoresTop ?? [];
+$operadoresMayorRiesgo = $operadoresMayorRiesgo ?? [];
+$operadoresMejorDesempeno = $operadoresMejorDesempeno ?? [];
 $maquinasTop = $maquinasTop ?? [];
 $horasTurno = $horasTurno ?? [];
 $eventosPorOperador = $eventosPorOperador ?? [];
@@ -109,6 +111,31 @@ foreach ($tiposEventoLabels as $indice => $tipo) {
     ];
 }
 
+$relacionOperadorLabels = [];
+$relacionDatasetsData = [];
+foreach ($eventosPorTipoEtiquetaPorOperador as $item) {
+    $operador = (string) ($item["operador"] ?? "Sin operador");
+    $tipo = sigmaNormalizeChartLabel((string) ($item["tipo_evento"] ?? "Sin tipo"));
+    $etiqueta = sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "Sin etiqueta"));
+    $clave = $tipo . ' | ' . $etiqueta;
+    if (!in_array($operador, $relacionOperadorLabels, true)) {
+        $relacionOperadorLabels[] = $operador;
+    }
+    $relacionDatasetsData[$clave][$operador] = (int) ($item["total"] ?? 0);
+}
+$relacionDatasets = [];
+$coloresRelacion = ['#1D70B8', '#00A7A3', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B', '#14B8A6', '#F97316'];
+$relacionIndice = 0;
+foreach ($relacionDatasetsData as $clave => $valores) {
+    $relacionDatasets[] = [
+        'label' => $clave,
+        'data' => array_map(fn($operador) => $valores[$operador] ?? 0, $relacionOperadorLabels),
+        'backgroundColor' => $coloresRelacion[$relacionIndice % count($coloresRelacion)],
+        'borderWidth' => 0,
+    ];
+    $relacionIndice++;
+}
+
 $turnoPorNombre = [];
 foreach (["1", "2", "3"] as $turno) {
     $turnoPorNombre[$turno] = 0;
@@ -127,8 +154,10 @@ $turnoValores = [
     (int) ($turnoPorNombre["3"] ?? 0),
 ];
 
-$operadorLabels = array_map(fn($item) => htmlspecialchars($item["nombre_completo"] ?? "-", ENT_QUOTES, 'UTF-8'), $operadoresTop);
-$operadorValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $operadoresTop);
+$riesgoLabels = array_map(fn($item) => htmlspecialchars($item["operador"] ?? "-", ENT_QUOTES, 'UTF-8'), $operadoresMayorRiesgo);
+$riesgoValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $operadoresMayorRiesgo);
+$desempenoLabels = array_map(fn($item) => htmlspecialchars($item["operador"] ?? "-", ENT_QUOTES, 'UTF-8'), $operadoresMejorDesempeno);
+$desempenoValores = array_map(fn($item) => (int) ($item["conductuales"] ?? 0), $operadoresMejorDesempeno);
 
 $maquinaLabels = array_map(fn($item) => htmlspecialchars($item["nombre_maquina"] ?? "-", ENT_QUOTES, 'UTF-8'), $maquinasTop);
 $maquinaValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $maquinasTop);
@@ -380,7 +409,7 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
 
         <div class="col-12">
             <div class="chart-card">
-                <h3>Eventos por tipo y operador</h3>
+                <h3>Tipo de evento y etiqueta por operador</h3>
                 <div class="chart-wrap large"><canvas id="eventTypeOperatorChart"></canvas></div>
             </div>
         </div>
@@ -416,11 +445,18 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
             </div>
         </div>
 
-        <!-- Row Final: Top Operadores y Productividad -->
+        <!-- Row Final: Riesgo y desempeño por operador -->
         <div class="col-lg-6">
             <div class="chart-card">
-                <h3>Top operadores</h3>
-                <div class="chart-wrap"><canvas id="operatorChart"></canvas></div>
+                <h3>Operadores con mayor riesgo</h3>
+                <div class="chart-wrap"><canvas id="riskOperatorChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h3>Operadores con mejor desempeño</h3>
+                <div class="chart-wrap"><canvas id="performanceOperatorChart"></canvas></div>
             </div>
         </div>
 
@@ -546,8 +582,8 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
         const eventTypeOperatorChart = new Chart(document.getElementById('eventTypeOperatorChart'), {
             type: 'bar',
             data: {
-                labels: <?= json_encode($operadoresTipoLabels, JSON_UNESCAPED_UNICODE) ?>,
-                datasets: <?= json_encode($tiposPorOperadorDatasets, JSON_UNESCAPED_UNICODE) ?>
+                labels: <?= json_encode($relacionOperadorLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: <?= json_encode($relacionDatasets, JSON_UNESCAPED_UNICODE) ?>
             },
             options: {
                 responsive: true,
@@ -586,14 +622,14 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
             }
         });
 
-        const operatorChart = new Chart(document.getElementById('operatorChart'), {
+        const riskOperatorChart = new Chart(document.getElementById('riskOperatorChart'), {
             type: 'bar',
             data: {
-                labels: <?= json_encode($operadorLabels) ?>,
+                labels: <?= json_encode($riesgoLabels, JSON_UNESCAPED_UNICODE) ?>,
                 datasets: [{
-                    label: 'Eventos',
-                    data: <?= json_encode($operadorValores) ?>,
-                    backgroundColor: '#1D70B8',
+                    label: 'Eventos conductuales',
+                    data: <?= json_encode($riesgoValores) ?>,
+                    backgroundColor: '#EF4444',
                     borderRadius: 8,
                     maxBarThickness: 28
                 }]
@@ -603,6 +639,33 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
                 maintainAspectRatio: false,
                 indexAxis: 'y',
                 plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } },
+                    y: { ticks: { autoSkip: false } }
+                }
+            }
+        });
+
+        const performanceOperatorChart = new Chart(document.getElementById('performanceOperatorChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($desempenoLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: [{
+                    label: 'Eventos conductuales',
+                    data: <?= json_encode($desempenoValores) ?>,
+                    backgroundColor: '#10B981',
+                    borderRadius: 8,
+                    maxBarThickness: 28
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.x} eventos conductuales` } }
+                },
                 scales: {
                     x: { beginAtZero: true, ticks: { precision: 0 } },
                     y: { ticks: { autoSkip: false } }

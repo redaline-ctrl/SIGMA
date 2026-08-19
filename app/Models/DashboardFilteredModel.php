@@ -296,14 +296,36 @@ class DashboardFilteredModel extends BaseModel
     public function eventosPorTipoPorOperador(array $f): array
     {
         [$where, $params] = $this->eventFilter($f);
+        $etiqueta = "COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta')";
         return $this->consultar(
             "SELECT o.nombre_completo AS operador, te.nombre_evento AS tipo_evento,
-                    COUNT(e.id_evento) AS total
+                {$etiqueta} AS etiqueta, COUNT(e.id_evento) AS total
             FROM eventos e
             INNER JOIN operadores o ON o.id_operador = e.id_operador
             INNER JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
+            LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
             WHERE {$where}
-            GROUP BY o.id_operador, o.nombre_completo, te.id_tipo_evento, te.nombre_evento
+            GROUP BY o.id_operador, o.nombre_completo, te.id_tipo_evento,
+                 te.nombre_evento, {$etiqueta}
+            ORDER BY o.nombre_completo ASC, total DESC, te.nombre_evento ASC",
+            $params
+        );
+    }
+
+    public function eventosPorTipoEtiquetaPorOperador(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $etiqueta = "COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta')";
+        return $this->consultar(
+            "SELECT o.nombre_completo AS operador, te.nombre_evento AS tipo_evento,
+                    {$etiqueta} AS etiqueta, COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            INNER JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
+            LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+            WHERE {$where}
+            GROUP BY o.id_operador, o.nombre_completo, te.id_tipo_evento,
+                     te.nombre_evento, {$etiqueta}
             ORDER BY o.nombre_completo ASC, total DESC, te.nombre_evento ASC",
             $params
         );
@@ -318,6 +340,30 @@ class DashboardFilteredModel extends BaseModel
     {
         $lista = $this->getConductualesPorOperador($f);
         return array_slice($lista, 0, 5);
+    }
+
+    public function operadoresMayorRiesgo(array $f): array
+    {
+        return array_slice($this->getConductualesPorOperador($f), 0, 5);
+    }
+
+    public function operadoresMejorDesempeno(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+        return $this->consultar(
+            "SELECT o.nombre_completo AS operador,
+                    SUM(CASE WHEN {$conductual} THEN 1 ELSE 0 END) AS conductuales,
+                    COUNT(e.id_evento) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where}
+            GROUP BY o.id_operador, o.nombre_completo
+            ORDER BY conductuales ASC, total DESC, o.nombre_completo ASC
+            LIMIT 5",
+            $params
+        );
     }
 
     public function maquinasConMasEventos(array $f): array
