@@ -1,5 +1,6 @@
 FROM php:8.3-apache
-RUN a2dismod mpm_event && a2enmod mpm_prefork rewrite
+RUN a2dismod mpm_event mpm_worker || true
+RUN a2enmod mpm_prefork rewrite
 RUN apt-get update && apt-get install -y libpng-dev libzip-dev libonig-dev && docker-php-ext-install pdo_mysql gd zip mbstring
 WORKDIR /var/www/html
 COPY . .
