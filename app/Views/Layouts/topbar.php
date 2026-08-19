@@ -1,5 +1,9 @@
 <header class="sigma-topbar">
 
+    <button type="button" class="btn btn-light d-md-none me-3" id="btnToggleSidebar">
+        <i class="bi bi-list"></i>
+    </button>
+
     <div class="topbar-title">
 
         <h1>

@@ -2,6 +2,7 @@
 
 $resumen = $resumen ?? [];
 $eventosPorTipo = $eventosPorTipo ?? [];
+$eventosPorEtiqueta = $eventosPorEtiqueta ?? [];
 $eventosPorTurno = $eventosPorTurno ?? [];
 $operadoresTop = $operadoresTop ?? [];
 $maquinasTop = $maquinasTop ?? [];
@@ -31,8 +32,41 @@ function turnoLabel(string $numero): string
     };
 }
 
-$tipoLabels = array_map(fn($item) => htmlspecialchars($item["nombre_evento"] ?? "-", ENT_QUOTES, 'UTF-8'), $eventosPorTipo);
+function sigmaNormalizeChartLabel(string $value): string
+{
+    $value = trim($value);
+    if ($value === '') {
+        return $value;
+    }
+
+    $map = [
+        'Bostez??' => 'Bostezo',
+        'Distracci??n' => 'Distracción',
+        'Obstrucci??n de c??mara' => 'Obstrucción de cámara',
+        'Desconexi??n de la c??mara' => 'Desconexión de la cámara',
+        'Uso del tel??fono confirmado' => 'Uso del teléfono confirmado',
+        'Fatiga cr??tica' => 'Fatiga crítica',
+        'Bostez�' => 'Bostezo',
+        'Distracci�n' => 'Distracción',
+        'Obstrucci�n de c�mara' => 'Obstrucción de cámara',
+        'Desconexi�n de la c�mara' => 'Desconexión de la cámara',
+        'Uso del tel�fono confirmado' => 'Uso del teléfono confirmado',
+        'Fatiga cr�tica' => 'Fatiga crítica',
+        'DistracciÃ³n' => 'Distracción',
+        'ObstrucciÃ³n de cÃ¡mara' => 'Obstrucción de cámara',
+        'DesconexiÃ³n de la cÃ¡mara' => 'Desconexión de la cámara',
+        'Uso del telÃ©fono confirmado' => 'Uso del teléfono confirmado',
+        'Fatiga crÃ­tica' => 'Fatiga crítica',
+    ];
+
+    return $map[$value] ?? $value;
+}
+
+$tipoLabels = array_map(fn($item) => htmlspecialchars(sigmaNormalizeChartLabel((string) ($item["nombre_evento"] ?? "-")), ENT_QUOTES, 'UTF-8'), $eventosPorTipo);
 $tipoValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorTipo);
+
+$etiquetaLabels = array_map(fn($item) => htmlspecialchars(sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "Sin etiqueta")), ENT_QUOTES, 'UTF-8'), $eventosPorEtiqueta);
+$etiquetaValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorEtiqueta);
 
 $turnoPorNombre = [];
 foreach (["1", "2", "3"] as $turno) {
@@ -78,7 +112,13 @@ $horasValores = [
 $operadorChartLabels = array_map(fn($item) => htmlspecialchars($item["operador"] ?? "-", ENT_QUOTES, 'UTF-8'), $eventosPorOperador);
 $operadorChartValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorOperador);
 
-$conducLabels = array_map(fn($item) => htmlspecialchars($item["categoria"] ?? "-", ENT_QUOTES, 'UTF-8'), $eventosConductuales);
+$conducLabels = array_map(function ($item) {
+    $categoria = (string) ($item["categoria"] ?? "-");
+    if ($categoria === 'No conductual') {
+        $categoria = 'Solo registrado';
+    }
+    return htmlspecialchars($categoria, ENT_QUOTES, 'UTF-8');
+}, $eventosConductuales);
 $conducValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosConductuales);
 
 $operadorCategoriaLabels = array_map(fn($item) => htmlspecialchars($item["operador"] ?? "-", ENT_QUOTES, 'UTF-8'), $operadorCategoria);
@@ -88,7 +128,7 @@ $operadorNoConductuales = array_map(fn($item) => (int) ($item["no_conductuales"]
 $detalleConductualPorOperador = [];
 foreach ($eventosConductualesPorOperador as $item) {
     $operador = (string) ($item["operador"] ?? "-");
-    $etiqueta = (string) ($item["etiqueta"] ?? "-");
+    $etiqueta = sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "-"));
     $cantidad = (int) ($item["total"] ?? 0);
 
     if (!isset($detalleConductualPorOperador[$operador])) {
@@ -106,7 +146,7 @@ $todasLasEtiquetas = [];
 $operadoresConducitosData = [];
 
 foreach ($eventosConductualesPorOperador as $item) {
-    $etiqueta = (string) ($item["etiqueta"] ?? "-");
+    $etiqueta = sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "-"));
     if (!in_array($etiqueta, $todasLasEtiquetas)) {
         $todasLasEtiquetas[] = $etiqueta;
     }
@@ -261,8 +301,15 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
 
         <div class="col-lg-4">
             <div class="chart-card">
-                <h3>Eventos conductuales</h3>
+                <h3>Conductual vs solo registrado</h3>
                 <div class="chart-wrap"><canvas id="conductualChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="chart-card">
+                <h3>Etiquetas más registradas por tipo de evento</h3>
+                <div class="chart-wrap"><canvas id="tagTypeChart"></canvas></div>
             </div>
         </div>
 
@@ -424,6 +471,30 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        const tagTypeChart = new Chart(document.getElementById('tagTypeChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($etiquetaLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: [{
+                    label: 'Eventos por etiqueta',
+                    data: <?= json_encode($etiquetaValores) ?>,
+                    backgroundColor: '#0EA5E9',
+                    borderRadius: 8,
+                    maxBarThickness: 30,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } },
+                    y: { ticks: { autoSkip: false } }
+                }
             }
         });
 

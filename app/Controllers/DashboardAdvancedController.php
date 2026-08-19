@@ -30,6 +30,7 @@ class DashboardAdvancedController extends BaseController
         $datosFiltrados = [
             "resumen" => $this->dashboard->resumenGeneral($filtros),
             "eventosPorTipo" => $this->dashboard->eventosPorTipo($filtros),
+            "eventosPorEtiqueta" => $this->dashboard->eventosPorEtiqueta($filtros),
             "eventosPorTurno" => $this->dashboard->eventosPorTurno($filtros),
             "operadoresTop" => $this->dashboard->operadoresConMasEventos($filtros),
             "maquinasTop" => $this->dashboard->maquinasConMasEventos($filtros),

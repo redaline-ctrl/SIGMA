@@ -101,6 +101,32 @@
 
         }
 
+        .sigma-sidebar-overlay {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .sigma-main {
+                margin-left: 0;
+            }
+
+            .sigma-content {
+                padding: 16px;
+            }
+
+            .sigma-sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(2, 6, 23, 0.45);
+                z-index: 9998;
+                display: none;
+            }
+
+            .sigma-sidebar-overlay.show {
+                display: block;
+            }
+        }
+
         .sigma-home-hero {
             background: linear-gradient(135deg, #1D70B8 0%, #0F4A8E 100%);
             color: #ffffff;
@@ -140,6 +166,8 @@
 
     <?php require __DIR__ . "/sidebar.php"; ?>
 
+    <div class="sigma-sidebar-overlay" id="sigmaSidebarOverlay"></div>
+
 
     <!-- ÁREA PRINCIPAL -->
 
@@ -157,6 +185,33 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        const toggleButton = document.getElementById('btnToggleSidebar');
+        const sidebar = document.querySelector('.sigma-sidebar');
+        const overlay = document.getElementById('sigmaSidebarOverlay');
+
+        if (!toggleButton || !sidebar || !overlay) {
+            return;
+        }
+
+        const closeSidebar = () => {
+            sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+        };
+
+        toggleButton.addEventListener('click', function () {
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        });
+
+        overlay.addEventListener('click', closeSidebar);
+
+        sidebar.querySelectorAll('a.sidebar-item').forEach(function (item) {
+            item.addEventListener('click', closeSidebar);
+        });
+    })();
+</script>
 
 </body>
 

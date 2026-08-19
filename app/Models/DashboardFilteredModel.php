@@ -72,6 +72,20 @@ class DashboardFilteredModel extends BaseModel
     public function eventosPorOperador(array $f): array { return $this->groupEvent($f, "o.nombre_completo", "operador", "operadores o ON o.id_operador=e.id_operador", "o.nombre_completo", 8); }
     public function operadoresConMasEventos(array $f): array { return $this->groupEvent($f, "o.nombre_completo", "nombre_completo", "operadores o ON o.id_operador=e.id_operador", "o.nombre_completo", 5); }
     public function maquinasConMasEventos(array $f): array { return $this->groupEvent($f, "m.nombre_maquina", "nombre_maquina", "maquinas m ON m.id_maquina=e.id_maquina", "m.nombre_maquina", 5); }
+    public function eventosPorEtiqueta(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        return $this->consultar(
+            "SELECT COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta') etiqueta, COUNT(e.id_evento) total
+             FROM eventos e
+             LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+             WHERE {$where}
+             GROUP BY etiqueta
+             ORDER BY total DESC, etiqueta ASC
+             LIMIT 12",
+            $params
+        );
+    }
 
     private function groupEvent(array $f, string $group, string $label, string $join = "", string $order = "total DESC", int $limit = 0): array
     {

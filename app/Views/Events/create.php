@@ -5,6 +5,38 @@ $maquinas = $maquinas ?? [];
 $tiposEventos = $tiposEventos ?? [];
 $etiquetas = $etiquetas ?? [];
 $clasificaciones = $clasificaciones ?? [];
+
+if (!function_exists('sigmaNormalizeText')) {
+    function sigmaNormalizeText(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return $value;
+        }
+
+        $map = [
+            'Bostez??' => 'Bostezo',
+            'Distracci??n' => 'Distracción',
+            'Obstrucci??n de c??mara' => 'Obstrucción de cámara',
+            'Desconexi??n de la c??mara' => 'Desconexión de la cámara',
+            'Uso del tel??fono confirmado' => 'Uso del teléfono confirmado',
+            'Fatiga cr??tica' => 'Fatiga crítica',
+            'Bostez�' => 'Bostezo',
+            'Distracci�n' => 'Distracción',
+            'Obstrucci�n de c�mara' => 'Obstrucción de cámara',
+            'Desconexi�n de la c�mara' => 'Desconexión de la cámara',
+            'Uso del tel�fono confirmado' => 'Uso del teléfono confirmado',
+            'Fatiga cr�tica' => 'Fatiga crítica',
+            'DistracciÃ³n' => 'Distracción',
+            'ObstrucciÃ³n de cÃ¡mara' => 'Obstrucción de cámara',
+            'DesconexiÃ³n de la cÃ¡mara' => 'Desconexión de la cámara',
+            'Uso del telÃ©fono confirmado' => 'Uso del teléfono confirmado',
+            'Fatiga crÃ­tica' => 'Fatiga crítica',
+        ];
+
+        return $map[$value] ?? $value;
+    }
+}
 ?>
 
 <div class="event-form-page">
@@ -73,7 +105,7 @@ $clasificaciones = $clasificaciones ?? [];
                         <option value="">Selecciona</option>
                         <?php foreach ($tiposEventos as $tipo): ?>
                             <option value="<?= (int) $tipo["id_tipo_evento"] ?>">
-                                <?= htmlspecialchars($tipo["nombre_evento"]) ?>
+                                <?= htmlspecialchars(sigmaNormalizeText((string) ($tipo["nombre_evento"] ?? "")), ENT_QUOTES, "UTF-8") ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -85,7 +117,7 @@ $clasificaciones = $clasificaciones ?? [];
                         <option value="">Sin etiqueta</option>
                         <?php foreach ($etiquetas as $etiqueta): ?>
                             <option value="<?= (int) $etiqueta["id_etiqueta"] ?>">
-                                <?= htmlspecialchars($etiqueta["nombre_etiqueta"]) ?>
+                                <?= htmlspecialchars(sigmaNormalizeText((string) ($etiqueta["nombre_etiqueta"] ?? "")), ENT_QUOTES, "UTF-8") ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

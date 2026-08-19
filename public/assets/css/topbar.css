@@ -194,6 +194,21 @@
 
         padding: 0 18px;
 
+        gap: 10px;
+
+    }
+
+    .topbar-title p {
+        display: none;
+    }
+
+    .topbar-actions {
+        gap: 10px;
+    }
+
+    .topbar-button {
+        width: 36px;
+        height: 36px;
     }
 
 
@@ -213,8 +228,22 @@
 
     .topbar-title h1 {
 
-        font-size: 20px;
+        font-size: 18px;
 
+    }
+
+    .topbar-user {
+        border-left: none;
+    }
+
+    .topbar-avatar {
+        width: 36px;
+        height: 36px;
+    }
+
+    .sigma-topbar .btn.btn-outline-secondary.btn-sm {
+        padding: 4px 8px;
+        font-size: 12px;
     }
 
 }
