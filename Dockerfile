@@ -8,6 +8,12 @@ RUN a2dismod mpm_event mpm_worker || true; \
     echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf; \
     a2enconf servername
 
+RUN echo '<Directory /var/www/html/public>\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/conf-available/override.conf && \
+    a2enconf override    
+
 RUN apt-get update && apt-get install -y --no-install-recommends libpng-dev libzip-dev libonig-dev libxml2-dev unzip \
     && docker-php-ext-install pdo_mysql gd zip mbstring \
     && rm -rf /var/lib/apt/lists/*
