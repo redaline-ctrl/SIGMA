@@ -1,6 +1,12 @@
 <?php
 
 $resumen = $resumen ?? [];
+$totalesClasificacion = $totalesClasificacion ?? [];
+$comparativaClasificacion = $comparativaClasificacion ?? [];
+$conductualesPorOperador = $conductualesPorOperador ?? [];
+$registradosPorOperador = $registradosPorOperador ?? [];
+$detalleOperadorCompleto = $detalleOperadorCompleto ?? [];
+$detalleConductualPorEtiqueta = $detalleConductualPorEtiqueta ?? [];
 $eventosPorTipo = $eventosPorTipo ?? [];
 $eventosPorEtiqueta = $eventosPorEtiqueta ?? [];
 $eventosPorTurno = $eventosPorTurno ?? [];
@@ -117,13 +123,9 @@ $operadorChartLabels = array_map(fn($item) => htmlspecialchars($item["operador"]
 $operadorChartValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorOperador);
 
 $conducLabels = array_map(function ($item) {
-    $categoria = (string) ($item["categoria"] ?? "-");
-    if ($categoria === 'No conductual') {
-        $categoria = 'Solo registrado';
-    }
-    return htmlspecialchars($categoria, ENT_QUOTES, 'UTF-8');
-}, $eventosConductuales);
-$conducValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosConductuales);
+    return htmlspecialchars((string) ($item["clasificacion"] ?? "-"), ENT_QUOTES, 'UTF-8');
+}, $comparativaClasificacion);
+$conducValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $comparativaClasificacion);
 
 $operadorCategoriaLabels = array_map(fn($item) => htmlspecialchars($item["operador"] ?? "-", ENT_QUOTES, 'UTF-8'), $operadorCategoria);
 $operadorConductuales = array_map(fn($item) => (int) ($item["conductuales"] ?? 0), $operadorCategoria);
@@ -201,6 +203,10 @@ $horaFrecuenteTexto = $horaFrecuente ? sprintf("%02d:00", (int) $horaFrecuente["
 $horaCriticaTexto = $horaCritica ? sprintf("%02d:00", (int) $horaCritica["hora"]) : "Sin datos";
 $operadorCriticoTexto = $operadorCritico["nombre"] ?? "Sin datos";
 $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
+
+$totalesGlobales = (int) ($totalesClasificacion["total"] ?? 0);
+$totalesConductuales = (int) ($totalesClasificacion["conductuales"] ?? 0);
+$totalesRegistrados = (int) ($totalesClasificacion["registrados"] ?? 0);
 ?>
 
 <div class="dashboard-page">
@@ -234,9 +240,9 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
                 <i class="bi bi-exclamation-triangle-fill"></i>
             </div>
             <div class="kpi-info">
-                <span>Total eventos</span>
-                <strong><?= (int) ($resumen["total_eventos"] ?? 0) ?></strong>
-                <small>Registros en operación</small>
+                <span>Total eventos por clasificación</span>
+                <strong><?= $totalesGlobales ?></strong>
+                <small><?= $totalesGlobales ?> Totales | <?= $totalesConductuales ?> Conductuales | <?= $totalesRegistrados ?> Registrados</small>
             </div>
         </div>
 
@@ -305,8 +311,54 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
 
         <div class="col-lg-4">
             <div class="chart-card">
-                <h3>Conductual vs solo registrado</h3>
+                <h3>Conductual vs Registrado</h3>
                 <div class="chart-wrap"><canvas id="conductualChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h3>Conductuales por operador</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Operador</th><th class="text-end">Conductuales</th></tr></thead>
+                        <tbody>
+                        <?php if (empty($conductualesPorOperador)): ?>
+                            <tr><td colspan="2" class="text-muted">Sin datos</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($conductualesPorOperador as $item): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars((string) ($item["operador"] ?? "-"), ENT_QUOTES, "UTF-8") ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["total"] ?? 0) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <h3>Registrados por operador</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Operador</th><th class="text-end">Registrados</th></tr></thead>
+                        <tbody>
+                        <?php if (empty($registradosPorOperador)): ?>
+                            <tr><td colspan="2" class="text-muted">Sin datos</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($registradosPorOperador as $item): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars((string) ($item["operador"] ?? "-"), ENT_QUOTES, "UTF-8") ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["total"] ?? 0) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -322,6 +374,31 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
             <div class="chart-card">
                 <h3>Detalle conductual por operador</h3>
                 <div class="chart-wrap large"><canvas id="operadorEtiquetasChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="chart-card">
+                <h3>Detalle por operador (conductuales y registrados)</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Operador</th><th class="text-end">Conductuales</th><th class="text-end">Registrados</th><th class="text-end">Total</th></tr></thead>
+                        <tbody>
+                        <?php if (empty($detalleOperadorCompleto)): ?>
+                            <tr><td colspan="4" class="text-muted">Sin datos</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($detalleOperadorCompleto as $item): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars((string) ($item["operador"] ?? "-"), ENT_QUOTES, "UTF-8") ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["conductuales"] ?? 0) ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["registrados"] ?? 0) ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["total"] ?? 0) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -559,7 +636,7 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
                         borderRadius: 6
                     },
                     {
-                        label: 'No conductuales',
+                        label: 'Registrados',
                         data: <?= json_encode($operadorNoConductuales) ?>,
                         backgroundColor: '#10B981',
                         borderRadius: 6
@@ -639,7 +716,7 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
             type: 'line',
             data: {
                 labels: <?= json_encode($tendenciaMensualLabels, JSON_UNESCAPED_UNICODE) ?>,
-                datasets: [{ label: 'Eventos', data: <?= json_encode($tendenciaMensualValores) ?>, borderColor: '#00A7A3', backgroundColor: 'rgba(0, 167, 163, .14)', fill: true, tension: .3 }]
+                datasets: [{ label: 'Eventos conductuales', data: <?= json_encode($tendenciaMensualValores) ?>, borderColor: '#00A7A3', backgroundColor: 'rgba(0, 167, 163, .14)', fill: true, tension: .3 }]
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
         });

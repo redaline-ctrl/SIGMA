@@ -4,21 +4,11 @@ require_once __DIR__ . "/BaseModel.php";
 
 class DashboardFilteredModel extends BaseModel
 {
-    private const CONDUCTUALES = [
-        "Fatiga crítica", "Fatiga moderada", "Uso del teléfono confirmado", "Uso del radio",
-        "Volante suelto", "Lectura de indicadores", "Maniobra", "Estacionado",
-        "Anotaciones durante operación", "Desconexión de la cámara", "Obstrucción de cámara", "Uso de cigarro",
-    ];
-
-    private const CRITICAS = [
-        "Fatiga crítica", "Fatiga moderada", "Uso del teléfono confirmado", "Uso de cigarro",
-        "Obstrucción de cámara", "Desconexión de la cámara",
-    ];
-
     private function eventFilter(array $filters, string $alias = "e"): array
     {
         $where = ["1 = 1"];
         $params = [];
+
         if (!empty($filters["fecha"])) { $where[] = "DATE({$alias}.fecha_evento) = ?"; $params[] = $filters["fecha"]; }
         if (!empty($filters["desde"])) { $where[] = "DATE({$alias}.fecha_evento) >= ?"; $params[] = $filters["desde"]; }
         if (!empty($filters["hasta"])) { $where[] = "DATE({$alias}.fecha_evento) <= ?"; $params[] = $filters["hasta"]; }
@@ -26,10 +16,8 @@ class DashboardFilteredModel extends BaseModel
         if (!empty($filters["anio"])) { $where[] = "YEAR({$alias}.fecha_evento) = ?"; $params[] = (int) $filters["anio"]; }
         if (!empty($filters["turno"])) { $where[] = "{$alias}.turno = ?"; $params[] = (string) $filters["turno"]; }
         if (!empty($filters["operador"])) { $where[] = "{$alias}.id_operador = ?"; $params[] = (int) $filters["operador"]; }
-        if (!empty($filters["supervisor"])) {
-            $where[] = "EXISTS (SELECT 1 FROM relevos rf WHERE rf.fecha_operativa = {$alias}.fecha_operativa AND rf.turno = {$alias}.turno AND rf.id_operador = {$alias}.id_operador AND rf.id_supervisor = ?)";
-            $params[] = (int) $filters["supervisor"];
-        }
+        if (!empty($filters["supervisor"])) { $where[] = "{$alias}.supervisor_id = ?"; $params[] = (int) $filters["supervisor"]; }
+
         return [implode(" AND ", $where), $params];
     }
 
@@ -37,6 +25,7 @@ class DashboardFilteredModel extends BaseModel
     {
         $where = ["1 = 1"];
         $params = [];
+
         if (!empty($filters["fecha"])) { $where[] = "DATE({$alias}.fecha_operativa) = ?"; $params[] = $filters["fecha"]; }
         if (!empty($filters["desde"])) { $where[] = "DATE({$alias}.fecha_operativa) >= ?"; $params[] = $filters["desde"]; }
         if (!empty($filters["hasta"])) { $where[] = "DATE({$alias}.fecha_operativa) <= ?"; $params[] = $filters["hasta"]; }
@@ -45,100 +34,414 @@ class DashboardFilteredModel extends BaseModel
         if (!empty($filters["turno"])) { $where[] = "{$alias}.turno = ?"; $params[] = (string) $filters["turno"]; }
         if (!empty($filters["operador"])) { $where[] = "{$alias}.id_operador = ?"; $params[] = (int) $filters["operador"]; }
         if (!empty($filters["supervisor"])) { $where[] = "{$alias}.id_supervisor = ?"; $params[] = (int) $filters["supervisor"]; }
+
         return [implode(" AND ", $where), $params];
     }
 
-    private function inList(string $column, array $values, array &$params): string
+    private function condConductual(string $aliasClasificacion = "c"): string
     {
-        $params = array_merge($params, $values);
-        return $column . " IN (" . implode(",", array_fill(0, count($values), "?")) . ")";
+        return "LOWER(TRIM({$aliasClasificacion}.nombre_clasificacion)) = 'conductual'";
     }
 
-    public function listarOperadores(): array { return $this->consultar("SELECT id_operador, nombre_completo FROM operadores WHERE estado = 1 ORDER BY nombre_completo", []); }
-    public function listarSupervisores(): array { return $this->consultar("SELECT id_supervisor, nombre_completo FROM supervisores WHERE estado = 1 ORDER BY nombre_completo", []); }
-
-    public function resumenGeneral(array $f): array
+    private function condRegistrado(string $aliasClasificacion = "c"): string
     {
-        [$where, $params] = $this->eventFilter($f);
-        $crit = [];
-        $critWhere = $this->inList("et.nombre_etiqueta", self::CRITICAS, $crit);
-        $sql = "SELECT COUNT(*) total_eventos, COUNT(DISTINCT e.id_operador) total_operadores, COUNT(DISTINCT e.id_maquina) total_maquinas,
-            SUM(CASE WHEN {$critWhere} THEN 1 ELSE 0 END) total_criticos FROM eventos e LEFT JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta WHERE {$where}";
-        return $this->consultarUno($sql, array_merge($crit, $params)) ?? ["total_eventos"=>0,"total_operadores"=>0,"total_maquinas"=>0,"total_criticos"=>0];
+        return "LOWER(TRIM({$aliasClasificacion}.nombre_clasificacion)) = 'registrado'";
     }
 
-    public function eventosPorTipo(array $f): array { return $this->groupEvent($f, "te.nombre_evento", "nombre_evento", "tipos_eventos te ON te.id_tipo_evento=e.id_tipo_evento"); }
-    public function eventosPorTurno(array $f): array { return $this->groupEvent($f, "e.turno", "turno", ""); }
-    public function eventosPorOperador(array $f): array { return $this->groupEvent($f, "o.nombre_completo", "operador", "operadores o ON o.id_operador=e.id_operador", "o.nombre_completo", 8); }
-    public function operadoresConMasEventos(array $f): array { return $this->groupEvent($f, "o.nombre_completo", "nombre_completo", "operadores o ON o.id_operador=e.id_operador", "o.nombre_completo", 5); }
-    public function maquinasConMasEventos(array $f): array { return $this->groupEvent($f, "m.nombre_maquina", "nombre_maquina", "maquinas m ON m.id_maquina=e.id_maquina", "m.nombre_maquina", 5); }
-    public function eventosPorEtiqueta(array $f): array
+    public function listarOperadores(): array
+    {
+        return $this->consultar("SELECT id_operador, nombre_completo FROM operadores WHERE estado = 1 ORDER BY nombre_completo", []);
+    }
+
+    public function listarSupervisores(): array
+    {
+        return $this->consultar("SELECT id_supervisor, nombre_completo FROM supervisores WHERE estado = 1 ORDER BY nombre_completo", []);
+    }
+
+    public function getTotalesClasificacion(array $f): array
     {
         [$where, $params] = $this->eventFilter($f);
-        $etiquetaExpr = "COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta')";
+        $conductual = $this->condConductual("c");
+        $registrado = $this->condRegistrado("c");
+
+        $row = $this->consultarUno(
+            "SELECT
+                SUM(CASE WHEN {$conductual} THEN 1 ELSE 0 END) AS conductuales,
+                SUM(CASE WHEN {$registrado} THEN 1 ELSE 0 END) AS registrados
+            FROM eventos e
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where}",
+            $params
+        ) ?? ["conductuales" => 0, "registrados" => 0];
+
+        $conductuales = (int) ($row["conductuales"] ?? 0);
+        $registrados = (int) ($row["registrados"] ?? 0);
+
+        return [
+            "conductuales" => $conductuales,
+            "registrados" => $registrados,
+            "total" => $conductuales + $registrados,
+        ];
+    }
+
+    public function getComparativaConductualRegistrado(array $f): array
+    {
+        $totales = $this->getTotalesClasificacion($f);
+        return [
+            ["clasificacion" => "Conductual", "total" => (int) $totales["conductuales"]],
+            ["clasificacion" => "Registrado", "total" => (int) $totales["registrados"]],
+        ];
+    }
+
+    public function getConductualesPorOperador(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+
         return $this->consultar(
-            "SELECT {$etiquetaExpr} etiqueta, COUNT(e.id_evento) total
-             FROM eventos e
-             LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
-             WHERE {$where}
-             GROUP BY {$etiquetaExpr}
-             ORDER BY COUNT(e.id_evento) DESC, {$etiquetaExpr} ASC
-             LIMIT 12",
+            "SELECT o.nombre_completo AS operador, COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY o.id_operador, o.nombre_completo
+            ORDER BY total DESC, o.nombre_completo ASC",
             $params
         );
     }
 
-    private function groupEvent(array $f, string $group, string $label, string $join = "", string $order = "total DESC", int $limit = 0): array
+    public function getRegistradosPorOperador(array $f): array
     {
         [$where, $params] = $this->eventFilter($f);
-        $sql = "SELECT {$group} AS {$label}, COUNT(e.id_evento) total FROM eventos e" . ($join ? " INNER JOIN {$join}" : "") . " WHERE {$where} GROUP BY {$group} ORDER BY {$order}" . ($limit ? " LIMIT {$limit}" : "");
-        return $this->consultar($sql, $params);
+        $registrado = $this->condRegistrado("c");
+
+        return $this->consultar(
+            "SELECT o.nombre_completo AS operador, COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$registrado}
+            GROUP BY o.id_operador, o.nombre_completo
+            ORDER BY total DESC, o.nombre_completo ASC",
+            $params
+        );
+    }
+
+    public function getDetalleOperadorCompleto(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+        $registrado = $this->condRegistrado("c");
+
+        return $this->consultar(
+            "SELECT
+                o.nombre_completo AS operador,
+                SUM(CASE WHEN {$conductual} THEN 1 ELSE 0 END) AS conductuales,
+                SUM(CASE WHEN {$registrado} THEN 1 ELSE 0 END) AS registrados,
+                SUM(CASE WHEN {$conductual} OR {$registrado} THEN 1 ELSE 0 END) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where}
+            GROUP BY o.id_operador, o.nombre_completo
+            ORDER BY total DESC, o.nombre_completo ASC",
+            $params
+        );
+    }
+
+    public function getDetalleConductualPorOperadorPorEtiqueta(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+
+        return $this->consultar(
+            "SELECT
+                o.nombre_completo AS operador,
+                et.nombre_etiqueta AS etiqueta,
+                COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY o.id_operador, o.nombre_completo, et.nombre_etiqueta
+            ORDER BY o.nombre_completo ASC, total DESC",
+            $params
+        );
+    }
+
+    public function getHorariosMayorRiesgo(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+
+        return $this->consultar(
+            "SELECT HOUR(e.hora_evento) AS hora, COUNT(*) AS total_eventos, COUNT(*) AS eventos_criticos
+            FROM eventos e
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY HOUR(e.hora_evento)
+            ORDER BY total_eventos DESC, hora ASC",
+            $params
+        );
+    }
+
+    public function getTendenciaSemanal(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+
+        return $this->consultar(
+            "SELECT
+                YEARWEEK(e.fecha_evento, 1) AS semana_orden,
+                DATE_FORMAT(MIN(e.fecha_evento), '%d/%m/%Y') AS semana,
+                COUNT(*) AS total
+            FROM eventos e
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY YEARWEEK(e.fecha_evento, 1)
+            ORDER BY semana_orden ASC",
+            $params
+        );
+    }
+
+    public function getEventosPorTurno(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+
+        return $this->consultar(
+            "SELECT e.turno, COUNT(*) AS total
+            FROM eventos e
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY e.turno
+            ORDER BY e.turno ASC",
+            $params
+        );
+    }
+
+    public function getTendenciaPorPeriodo(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+
+        return $this->consultar(
+            "SELECT
+                DATE_FORMAT(e.fecha_evento, '%Y-%m') AS periodo,
+                DATE_FORMAT(MIN(e.fecha_evento), '%m/%Y') AS periodo_label,
+                COUNT(*) AS total
+            FROM eventos e
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY DATE_FORMAT(e.fecha_evento, '%Y-%m')
+            ORDER BY periodo ASC",
+            $params
+        );
+    }
+
+    public function resumenGeneral(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $totales = $this->getTotalesClasificacion($f);
+
+        $base = $this->consultarUno(
+            "SELECT
+                COUNT(DISTINCT e.id_operador) AS total_operadores,
+                COUNT(DISTINCT e.id_maquina) AS total_maquinas
+            FROM eventos e
+            WHERE {$where}",
+            $params
+        ) ?? ["total_operadores" => 0, "total_maquinas" => 0];
+
+        return [
+            "total_eventos" => (int) $totales["total"],
+            "total_operadores" => (int) ($base["total_operadores"] ?? 0),
+            "total_maquinas" => (int) ($base["total_maquinas"] ?? 0),
+            "total_criticos" => (int) $totales["conductuales"],
+        ];
+    }
+
+    public function eventosPorTipo(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        return $this->consultar(
+            "SELECT te.nombre_evento, COUNT(e.id_evento) AS total
+            FROM eventos e
+            INNER JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
+            WHERE {$where}
+            GROUP BY te.id_tipo_evento, te.nombre_evento
+            ORDER BY total DESC",
+            $params
+        );
+    }
+
+    public function eventosPorEtiqueta(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $etiquetaExpr = "COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta')";
+
+        return $this->consultar(
+            "SELECT {$etiquetaExpr} AS etiqueta, COUNT(e.id_evento) AS total
+            FROM eventos e
+            LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
+            WHERE {$where}
+            GROUP BY {$etiquetaExpr}
+            ORDER BY total DESC, {$etiquetaExpr} ASC
+            LIMIT 12",
+            $params
+        );
+    }
+
+    public function eventosPorTurno(array $f): array
+    {
+        return $this->getEventosPorTurno($f);
+    }
+
+    public function operadoresConMasEventos(array $f): array
+    {
+        $lista = $this->getConductualesPorOperador($f);
+        return array_slice($lista, 0, 5);
+    }
+
+    public function maquinasConMasEventos(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+        return $this->consultar(
+            "SELECT m.nombre_maquina, COUNT(e.id_evento) AS total
+            FROM eventos e
+            INNER JOIN maquinas m ON m.id_maquina = e.id_maquina
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY m.id_maquina, m.nombre_maquina
+            ORDER BY total DESC, m.nombre_maquina ASC
+            LIMIT 5",
+            $params
+        );
     }
 
     public function horasOperativasPorTurno(array $f): array
     {
         [$where, $params] = $this->relevoFilter($f);
-        return $this->consultar("SELECT r.turno, ROUND(SUM(COALESCE(r.horas_operativas,0)),2) total_horas FROM relevos r WHERE {$where} GROUP BY r.turno ORDER BY r.turno", $params);
+        return $this->consultar("SELECT r.turno, ROUND(SUM(COALESCE(r.horas_operativas,0)),2) AS total_horas FROM relevos r WHERE {$where} GROUP BY r.turno ORDER BY r.turno", $params);
+    }
+
+    public function eventosPorOperador(array $f): array
+    {
+        $lista = $this->getDetalleOperadorCompleto($f);
+        $salida = [];
+        foreach ($lista as $item) {
+            $salida[] = [
+                "operador" => $item["operador"],
+                "total" => (int) ($item["total"] ?? 0),
+            ];
+        }
+        return array_slice($salida, 0, 8);
     }
 
     public function eventosConductualesResumen(array $f): array
     {
-        [$where, $whereParams] = $this->eventFilter($f); $inParams = []; $in = $this->inList("et.nombre_etiqueta", self::CONDUCTUALES, $inParams);
-        return $this->consultar("SELECT CASE WHEN {$in} THEN 'Conductual' ELSE 'No conductual' END categoria, COUNT(*) total FROM eventos e LEFT JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta WHERE {$where} GROUP BY categoria ORDER BY total DESC", array_merge($inParams, $whereParams));
+        return $this->getComparativaConductualRegistrado($f);
     }
 
     public function eventosPorOperadorYCategoria(array $f): array
     {
-        [$where, $whereParams] = $this->eventFilter($f); $inParams1 = []; $in1 = $this->inList("et.nombre_etiqueta", self::CONDUCTUALES, $inParams1); $inParams2 = []; $in2 = $this->inList("et.nombre_etiqueta", self::CONDUCTUALES, $inParams2);
-        return $this->consultar("SELECT o.nombre_completo operador, SUM(CASE WHEN {$in1} THEN 1 ELSE 0 END) conductuales, SUM(CASE WHEN NOT ({$in2}) OR et.nombre_etiqueta IS NULL THEN 1 ELSE 0 END) no_conductuales FROM eventos e LEFT JOIN operadores o ON o.id_operador=e.id_operador LEFT JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta WHERE {$where} GROUP BY o.id_operador,o.nombre_completo ORDER BY (conductuales+no_conductuales) DESC LIMIT 8", array_merge($inParams1, $inParams2, $whereParams));
+        $lista = $this->getDetalleOperadorCompleto($f);
+        $salida = [];
+
+        foreach ($lista as $item) {
+            $salida[] = [
+                "operador" => $item["operador"],
+                "conductuales" => (int) ($item["conductuales"] ?? 0),
+                "no_conductuales" => (int) ($item["registrados"] ?? 0),
+            ];
+        }
+
+        return array_slice($salida, 0, 8);
     }
 
     public function eventosConductualesPorOperador(array $f): array
     {
-        [$where, $whereParams] = $this->eventFilter($f); $inParams = []; $in = $this->inList("et.nombre_etiqueta", self::CONDUCTUALES, $inParams);
-        return $this->consultar("SELECT o.nombre_completo operador, et.nombre_etiqueta etiqueta, COUNT(*) total FROM eventos e LEFT JOIN operadores o ON o.id_operador=e.id_operador LEFT JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta WHERE {$where} AND {$in} GROUP BY o.id_operador,o.nombre_completo,et.nombre_etiqueta ORDER BY o.nombre_completo,total DESC", array_merge($whereParams, $inParams));
+        return $this->getDetalleConductualPorOperadorPorEtiqueta($f);
     }
 
     public function horariosRiesgoOperacional(array $f): array
     {
-        [$where, $whereParams] = $this->eventFilter($f); $inParams = []; $in = $this->inList("et.nombre_etiqueta", self::CRITICAS, $inParams);
-        return $this->consultar("SELECT HOUR(e.hora_evento) hora, COUNT(*) total_eventos, SUM(CASE WHEN {$in} THEN 1 ELSE 0 END) eventos_criticos FROM eventos e LEFT JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta WHERE {$where} GROUP BY HOUR(e.hora_evento) ORDER BY eventos_criticos DESC,total_eventos DESC", array_merge($inParams, $whereParams));
+        return $this->getHorariosMayorRiesgo($f);
     }
 
-    public function tendenciaConductualSemanal(array $f): array { return $this->trend($f, "YEARWEEK(e.fecha_evento,1)", "DATE_FORMAT(MIN(e.fecha_evento),'%d/%m/%Y')", "semana"); }
-    public function tendenciaEventosMensual(array $f): array { return $this->trend($f, "DATE_FORMAT(e.fecha_evento,'%Y-%m')", "DATE_FORMAT(MIN(e.fecha_evento),'%m/%Y')", "periodo", false); }
-
-    private function trend(array $f, string $group, string $labelSql, string $label, bool $conductual = true): array
+    public function tendenciaConductualSemanal(array $f): array
     {
-        [$where, $params] = $this->eventFilter($f); $extra = "";
-        if ($conductual) { $in = $this->inList("et.nombre_etiqueta", self::CONDUCTUALES, $params); $extra = " INNER JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta WHERE {$where} AND {$in}"; } else { $extra = " WHERE {$where}"; }
-        return $this->consultar("SELECT {$group} periodo_orden, {$labelSql} {$label}, COUNT(*) total FROM eventos e{$extra} GROUP BY {$group} ORDER BY periodo_orden", $params);
+        return $this->getTendenciaSemanal($f);
     }
 
-    public function horaMasFrecuente(array $f): ?array { return $this->singleHour($f, false); }
-    public function horaMasCritica(array $f): ?array { return $this->singleHour($f, true); }
-    private function singleHour(array $f, bool $critical): ?array { [$where,$whereParams]=$this->eventFilter($f); $inParams=[]; $extra=" LEFT JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta"; $condition=""; if($critical){$in=$this->inList("et.nombre_etiqueta",self::CRITICAS,$inParams);$condition=" AND {$in}";} return $this->consultarUno("SELECT HOUR(e.hora_evento) hora,COUNT(*) total FROM eventos e{$extra} WHERE {$where}{$condition} GROUP BY HOUR(e.hora_evento) ORDER BY total DESC,hora ASC LIMIT 1", array_merge($whereParams,$inParams)); }
-    public function operadorMasCritico(array $f): ?array { return $this->singleEntity($f,"operadores o ON o.id_operador=e.id_operador","o.nombre_completo","nombre"); }
-    public function maquinaMasCritica(array $f): ?array { return $this->singleEntity($f,"maquinas m ON m.id_maquina=e.id_maquina","m.nombre_maquina","nombre"); }
-    private function singleEntity(array $f,string $join,string $field,string $label):?array { [$where,$whereParams]=$this->eventFilter($f);$inParams=[];$in=$this->inList("et.nombre_etiqueta",self::CRITICAS,$inParams);return $this->consultarUno("SELECT {$field} {$label},COUNT(*) total FROM eventos e INNER JOIN etiquetas et ON et.id_etiqueta=e.id_etiqueta INNER JOIN {$join} WHERE {$where} AND {$in} GROUP BY {$field} ORDER BY total DESC LIMIT 1",array_merge($whereParams,$inParams)); }
+    public function tendenciaEventosMensual(array $f): array
+    {
+        return $this->getTendenciaPorPeriodo($f);
+    }
+
+    public function horaMasFrecuente(array $f): ?array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        return $this->consultarUno(
+            "SELECT HOUR(e.hora_evento) AS hora, COUNT(*) AS total
+            FROM eventos e
+            WHERE {$where}
+            GROUP BY HOUR(e.hora_evento)
+            ORDER BY total DESC, hora ASC
+            LIMIT 1",
+            $params
+        );
+    }
+
+    public function horaMasCritica(array $f): ?array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+        return $this->consultarUno(
+            "SELECT HOUR(e.hora_evento) AS hora, COUNT(*) AS total
+            FROM eventos e
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY HOUR(e.hora_evento)
+            ORDER BY total DESC, hora ASC
+            LIMIT 1",
+            $params
+        );
+    }
+
+    public function operadorMasCritico(array $f): ?array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+        return $this->consultarUno(
+            "SELECT o.nombre_completo AS nombre, COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY o.id_operador, o.nombre_completo
+            ORDER BY total DESC, nombre ASC
+            LIMIT 1",
+            $params
+        );
+    }
+
+    public function maquinaMasCritica(array $f): ?array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        $conductual = $this->condConductual("c");
+        return $this->consultarUno(
+            "SELECT m.nombre_maquina AS nombre, COUNT(*) AS total
+            FROM eventos e
+            INNER JOIN maquinas m ON m.id_maquina = e.id_maquina
+            LEFT JOIN clasificaciones c ON c.id_clasificacion = e.id_clasificacion
+            WHERE {$where} AND {$conductual}
+            GROUP BY m.id_maquina, m.nombre_maquina
+            ORDER BY total DESC, nombre ASC
+            LIMIT 1",
+            $params
+        );
+    }
 }

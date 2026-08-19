@@ -1,6 +1,7 @@
 <?php
 
 $operadores = $operadores ?? [];
+$supervisores = $supervisores ?? [];
 $maquinas = $maquinas ?? [];
 $tiposEventos = $tiposEventos ?? [];
 $etiquetas = $etiquetas ?? [];
@@ -29,6 +30,26 @@ if (!function_exists('sigmaNormalizeText')) {
         $value = preg_replace('/cr\?+tica/iu', 'crítica', $value) ?? $value;
 
         return $value;
+    }
+}
+
+if (!function_exists('sigmaTiposPermitidosPorEtiqueta')) {
+    function sigmaTiposPermitidosPorEtiqueta(string $etiqueta): string
+    {
+        $mapa = [
+            'Fatiga moderada' => ['Bostezo', 'Fatiga'],
+            'Fatiga crítica' => ['Bostezo', 'Fatiga'],
+            'Uso del teléfono confirmado' => ['Distracción'],
+            'Uso del radio' => ['Distracción'],
+            'Lectura de indicadores' => ['Distracción'],
+            'Anotaciones durante operación' => ['Distracción'],
+            'Obstrucción de cámara' => ['Obstrucción de cámara'],
+            'Desconexión de la cámara' => ['Obstrucción de cámara'],
+            'Uso de cigarro' => ['Uso de cigarro'],
+        ];
+
+        $tipos = $mapa[$etiqueta] ?? [];
+        return implode('|', $tipos);
     }
 }
 ?>
@@ -82,6 +103,18 @@ if (!function_exists('sigmaNormalizeText')) {
                 </div>
 
                 <div class="col-md-6">
+                    <label class="form-label">Supervisor</label>
+                    <select name="id_supervisor" class="form-select" required>
+                        <option value="">Selecciona un supervisor</option>
+                        <?php foreach ($supervisores as $supervisor): ?>
+                            <option value="<?= (int) $supervisor["id_supervisor"] ?>">
+                                <?= htmlspecialchars($supervisor["nombre_completo"] ?? "-", ENT_QUOTES, "UTF-8") ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label">Máquina</label>
                     <select name="id_maquina" class="form-select" required>
                         <option value="">Selecciona una máquina</option>
@@ -95,10 +128,11 @@ if (!function_exists('sigmaNormalizeText')) {
 
                 <div class="col-md-4">
                     <label class="form-label">Tipo de evento</label>
-                    <select name="id_tipo_evento" class="form-select" required>
+                    <select name="id_tipo_evento" class="form-select" id="tipoEventoSelect" required>
                         <option value="">Selecciona</option>
                         <?php foreach ($tiposEventos as $tipo): ?>
-                            <option value="<?= (int) $tipo["id_tipo_evento"] ?>">
+                            <?php $nombreTipo = sigmaNormalizeText((string) ($tipo["nombre_evento"] ?? "")); ?>
+                            <option value="<?= (int) $tipo["id_tipo_evento"] ?>" data-nombre="<?= htmlspecialchars($nombreTipo, ENT_QUOTES, "UTF-8") ?>">
                                 <?= htmlspecialchars(sigmaNormalizeText((string) ($tipo["nombre_evento"] ?? "")), ENT_QUOTES, "UTF-8") ?>
                             </option>
                         <?php endforeach; ?>
@@ -107,11 +141,12 @@ if (!function_exists('sigmaNormalizeText')) {
 
                 <div class="col-md-4">
                     <label class="form-label">Etiqueta</label>
-                    <select name="id_etiqueta" class="form-select">
+                    <select name="id_etiqueta" class="form-select" id="etiquetaSelect">
                         <option value="">Sin etiqueta</option>
                         <?php foreach ($etiquetas as $etiqueta): ?>
-                            <option value="<?= (int) $etiqueta["id_etiqueta"] ?>">
-                                <?= htmlspecialchars(sigmaNormalizeText((string) ($etiqueta["nombre_etiqueta"] ?? "")), ENT_QUOTES, "UTF-8") ?>
+                            <?php $nombreEtiqueta = sigmaNormalizeText((string) ($etiqueta["nombre_etiqueta"] ?? "")); ?>
+                            <option value="<?= (int) $etiqueta["id_etiqueta"] ?>" data-etiqueta="<?= htmlspecialchars($nombreEtiqueta, ENT_QUOTES, "UTF-8") ?>" data-tipo="<?= htmlspecialchars(sigmaTiposPermitidosPorEtiqueta($nombreEtiqueta), ENT_QUOTES, "UTF-8") ?>">
+                                <?= htmlspecialchars($nombreEtiqueta, ENT_QUOTES, "UTF-8") ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -171,3 +206,52 @@ if (!function_exists('sigmaNormalizeText')) {
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const tipoSelect = document.getElementById('tipoEventoSelect');
+    const etiquetaSelect = document.getElementById('etiquetaSelect');
+
+    if (!tipoSelect || !etiquetaSelect) {
+        return;
+    }
+
+    const normalizar = (txt) => (txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+
+    const filtrarEtiquetas = () => {
+        const tipoOpt = tipoSelect.options[tipoSelect.selectedIndex];
+        const tipoNombre = (tipoOpt && tipoOpt.dataset && tipoOpt.dataset.nombre) ? tipoOpt.dataset.nombre : '';
+        const tipoNormalizado = normalizar(tipoNombre);
+
+        let selectedVisible = false;
+        Array.from(etiquetaSelect.options).forEach((opt, index) => {
+            if (index === 0) {
+                opt.hidden = false;
+                return;
+            }
+
+            if (!tipoNombre) {
+                opt.hidden = false;
+            } else {
+                const tiposPermitidos = (opt.dataset.tipo || '').split('|').map(normalizar).filter(Boolean);
+                opt.hidden = tiposPermitidos.length > 0 && !tiposPermitidos.includes(tipoNormalizado);
+            }
+
+            if (!opt.hidden && opt.selected) {
+                selectedVisible = true;
+            }
+        });
+
+        if (!selectedVisible) {
+            etiquetaSelect.value = '';
+        }
+    };
+
+    tipoSelect.addEventListener('change', filtrarEtiquetas);
+    filtrarEtiquetas();
+});
+</script>

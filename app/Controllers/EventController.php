@@ -191,6 +191,7 @@ class EventController extends BaseController
             "subtituloPagina" => "Registrar observación detectada en cámara",
             "usuarioActual" => "Administrador",
             "operadores" => $this->model->listarOperadores(),
+            "supervisores" => $this->model->listarSupervisores(),
             "maquinas" => $this->model->listarMaquinas(),
             "tiposEventos" => $this->model->listarTiposEvento(),
             "etiquetas" => $this->model->listarEtiquetas(),
@@ -240,7 +241,7 @@ class EventController extends BaseController
             die("El turno o estado del evento no es válido.");
         }
 
-        $idsRequeridos = ["id_operador", "id_maquina", "id_tipo_evento"];
+        $idsRequeridos = ["id_operador", "id_supervisor", "id_maquina", "id_tipo_evento"];
         foreach ($idsRequeridos as $campo) {
             if ((int) ($_POST[$campo] ?? 0) <= 0) {
                 http_response_code(422);
@@ -254,6 +255,7 @@ class EventController extends BaseController
             "turno" => $turno,
             "fecha_operativa" => $fechaOperativa,
             "id_operador" => $_POST["id_operador"] ?? null,
+            "id_supervisor" => $_POST["id_supervisor"] ?? null,
             "id_maquina" => $_POST["id_maquina"] ?? null,
             "id_tipo_evento" => $_POST["id_tipo_evento"] ?? null,
             "id_etiqueta" => $_POST["id_etiqueta"] ?? null,

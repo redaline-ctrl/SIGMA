@@ -5,6 +5,62 @@ require_once __DIR__ . "/../../config/app.php";
 
 class EventModel extends BaseModel
 {
+    public function __construct(PDO $conexion)
+    {
+        parent::__construct($conexion);
+        $this->asegurarEsquemaEventos();
+        $this->normalizarCatalogosTexto();
+    }
+
+    private function asegurarEsquemaEventos(): void
+    {
+        $sql = "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'eventos' AND COLUMN_NAME = 'supervisor_id'";
+        $existe = (int) $this->conexion->query($sql)->fetchColumn() > 0;
+
+        if (!$existe) {
+            $this->conexion->exec("ALTER TABLE eventos ADD supervisor_id INT NULL AFTER id_operador");
+            $this->conexion->exec("CREATE INDEX idx_eventos_supervisor_id ON eventos(supervisor_id)");
+        }
+    }
+
+    private function normalizarCatalogosTexto(): void
+    {
+        $this->conexion->exec("UPDATE tipos_eventos SET nombre_evento = 'Bostezo' WHERE nombre_evento IN ('Bostez??', 'Bostezo')");
+        $this->conexion->exec("UPDATE tipos_eventos SET nombre_evento = REPLACE(nombre_evento, '??', 'ó') WHERE nombre_evento LIKE '%??%'");
+
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, '├¡', 'á')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, '├®', 'é')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, '├│', 'ó')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, '├í', 'ú')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, 'c??mara', 'cámara')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, 'operaci??n', 'operación')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, 'tel??fono', 'teléfono')");
+        $this->conexion->exec("UPDATE etiquetas SET nombre_etiqueta = REPLACE(nombre_etiqueta, 'cr??tica', 'crítica')");
+    }
+
+    private function normalizarTextoMostrar(string $texto): string
+    {
+        $texto = trim($texto);
+        if ($texto === "") {
+            return $texto;
+        }
+
+        $texto = strtr($texto, [
+            "Ã¡" => "á", "Ã©" => "é", "Ã­" => "í", "Ã³" => "ó", "Ãº" => "ú", "Ã±" => "ñ",
+            "├¡" => "á", "├®" => "é", "├│" => "ó", "├í" => "ú",
+        ]);
+
+        $texto = preg_replace('/bostez\?\?/iu', 'Bostezo', $texto) ?? $texto;
+        $texto = preg_replace('/distracci\?+n/iu', 'Distracción', $texto) ?? $texto;
+        $texto = preg_replace('/obstrucci\?+n/iu', 'Obstrucción', $texto) ?? $texto;
+        $texto = preg_replace('/desconexi\?+n/iu', 'Desconexión', $texto) ?? $texto;
+        $texto = preg_replace('/tel\?+fono/iu', 'teléfono', $texto) ?? $texto;
+        $texto = preg_replace('/c\?+mara/iu', 'cámara', $texto) ?? $texto;
+        $texto = preg_replace('/cr\?+tica/iu', 'crítica', $texto) ?? $texto;
+
+        return $texto;
+    }
+
     public function listarOperadores(): array
     {
         $sql = "
@@ -38,7 +94,13 @@ class EventModel extends BaseModel
             ORDER BY nombre_evento ASC
         ";
 
-        return $this->consultar($sql);
+        $tipos = $this->consultar($sql);
+        foreach ($tipos as &$tipo) {
+            $tipo["nombre_evento"] = $this->normalizarTextoMostrar((string) ($tipo["nombre_evento"] ?? ""));
+        }
+        unset($tipo);
+
+        return $tipos;
     }
 
     public function listarEtiquetas(): array
@@ -50,7 +112,13 @@ class EventModel extends BaseModel
             ORDER BY nombre_etiqueta ASC
         ";
 
-        return $this->consultar($sql);
+        $etiquetas = $this->consultar($sql);
+        foreach ($etiquetas as &$etiqueta) {
+            $etiqueta["nombre_etiqueta"] = $this->normalizarTextoMostrar((string) ($etiqueta["nombre_etiqueta"] ?? ""));
+        }
+        unset($etiqueta);
+
+        return $etiquetas;
     }
 
     public function listarClasificaciones(): array
@@ -94,10 +162,12 @@ class EventModel extends BaseModel
                 te.nombre_evento AS tipo_evento,
                 et.nombre_etiqueta AS etiqueta,
                 c.nombre_clasificacion AS clasificacion,
-                COALESCE(s.nombre_completo, '-') AS supervisor
+                COALESCE(s_evento.nombre_completo, s_relevo.nombre_completo, 'Sin asignar') AS supervisor
             FROM eventos e
             LEFT JOIN operadores o
                 ON o.id_operador = e.id_operador
+            LEFT JOIN supervisores s_evento
+                ON s_evento.id_supervisor = e.supervisor_id
             LEFT JOIN maquinas m
                 ON m.id_maquina = e.id_maquina
             LEFT JOIN tipos_eventos te
@@ -117,8 +187,8 @@ class EventModel extends BaseModel
                     AND r2.turno = e.turno
                     AND DATE(r2.fecha_operativa) = DATE(e.fecha_operativa)
                 )
-            LEFT JOIN supervisores s
-                ON s.id_supervisor = r.id_supervisor
+            LEFT JOIN supervisores s_relevo
+                ON s_relevo.id_supervisor = r.id_supervisor
             WHERE 1 = 1
         ";
 
@@ -130,7 +200,7 @@ class EventModel extends BaseModel
         }
 
         if (!empty($filtros["supervisor"])) {
-            $sql .= " AND r.id_supervisor = ?";
+            $sql .= " AND COALESCE(e.supervisor_id, r.id_supervisor) = ?";
             $parametros[] = (int) $filtros["supervisor"];
         }
 
@@ -163,6 +233,7 @@ class EventModel extends BaseModel
                 e.observaciones,
                 o.nombre_completo AS operador,
                 o.id_operador,
+                e.supervisor_id,
                 m.nombre_maquina AS maquina,
                 m.id_maquina,
                 te.nombre_evento AS tipo_evento,
@@ -171,9 +242,10 @@ class EventModel extends BaseModel
                 et.id_etiqueta,
                 c.nombre_clasificacion AS clasificacion,
                 c.id_clasificacion,
-                s.nombre_completo AS supervisor
+                COALESCE(s_evento.nombre_completo, s_relevo.nombre_completo, 'Sin asignar') AS supervisor
             FROM eventos e
             LEFT JOIN operadores o ON o.id_operador = e.id_operador
+            LEFT JOIN supervisores s_evento ON s_evento.id_supervisor = e.supervisor_id
             LEFT JOIN maquinas m ON m.id_maquina = e.id_maquina
             LEFT JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
             LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
@@ -189,7 +261,7 @@ class EventModel extends BaseModel
                     AND r2.turno = e.turno
                     AND DATE(r2.fecha_operativa) = DATE(e.fecha_operativa)
                 )
-            LEFT JOIN supervisores s ON s.id_supervisor = r.id_supervisor
+            LEFT JOIN supervisores s_relevo ON s_relevo.id_supervisor = r.id_supervisor
             WHERE e.id_evento = ?
             LIMIT 1
         ";
@@ -208,6 +280,7 @@ class EventModel extends BaseModel
                 turno,
                 fecha_operativa,
                 id_operador,
+                supervisor_id,
                 id_maquina,
                 id_tipo_evento,
                 id_etiqueta,
@@ -218,7 +291,7 @@ class EventModel extends BaseModel
                 observaciones,
                 fecha_registro
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()
             )
         ";
 
@@ -249,6 +322,7 @@ class EventModel extends BaseModel
             $datos["turno"],
             $datos["fecha_operativa"],
             (int) $datos["id_operador"],
+            !empty($datos["id_supervisor"]) ? (int) $datos["id_supervisor"] : null,
             (int) $datos["id_maquina"],
             (int) $datos["id_tipo_evento"],
             !empty($datos["id_etiqueta"]) ? (int) $datos["id_etiqueta"] : null,
