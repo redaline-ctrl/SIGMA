@@ -111,30 +111,23 @@ foreach ($tiposEventoLabels as $indice => $tipo) {
     ];
 }
 
-$relacionOperadorLabels = [];
-$relacionDatasetsData = [];
+$tipoEventoDetalle = [];
+$tipoEventoTotales = [];
 foreach ($eventosPorTipoEtiquetaPorOperador as $item) {
     $operador = (string) ($item["operador"] ?? "Sin operador");
     $tipo = sigmaNormalizeChartLabel((string) ($item["tipo_evento"] ?? "Sin tipo"));
     $etiqueta = sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "Sin etiqueta"));
-    $clave = $tipo . ' | ' . $etiqueta;
-    if (!in_array($operador, $relacionOperadorLabels, true)) {
-        $relacionOperadorLabels[] = $operador;
-    }
-    $relacionDatasetsData[$clave][$operador] = (int) ($item["total"] ?? 0);
-}
-$relacionDatasets = [];
-$coloresRelacion = ['#1D70B8', '#00A7A3', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B', '#14B8A6', '#F97316'];
-$relacionIndice = 0;
-foreach ($relacionDatasetsData as $clave => $valores) {
-    $relacionDatasets[] = [
-        'label' => $clave,
-        'data' => array_map(fn($operador) => $valores[$operador] ?? 0, $relacionOperadorLabels),
-        'backgroundColor' => $coloresRelacion[$relacionIndice % count($coloresRelacion)],
-        'borderWidth' => 0,
+    $total = (int) ($item["total"] ?? 0);
+    $tipoEventoTotales[$tipo] = ($tipoEventoTotales[$tipo] ?? 0) + $total;
+    $tipoEventoDetalle[$tipo][] = [
+        'operador' => $operador,
+        'etiqueta' => $etiqueta,
+        'total' => $total,
     ];
-    $relacionIndice++;
 }
+$tipoEventoDetalleJson = json_encode($tipoEventoDetalle, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$tipoEventoLabels = array_keys($tipoEventoTotales);
+$tipoEventoValores = array_values($tipoEventoTotales);
 
 $turnoPorNombre = [];
 foreach (["1", "2", "3"] as $turno) {
@@ -409,8 +402,21 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
 
         <div class="col-12">
             <div class="chart-card">
-                <h3>Tipo de evento y etiqueta por operador</h3>
-                <div class="chart-wrap large"><canvas id="eventTypeOperatorChart"></canvas></div>
+                <h3>Eventos por tipo de evento</h3>
+                <p class="text-muted small mb-3">Selecciona una barra para consultar sus etiquetas y operadores.</p>
+                <div class="chart-wrap"><canvas id="eventTypeOperatorChart"></canvas></div>
+                <div id="eventTypeDetail" class="mt-3 d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h4 id="eventTypeDetailTitle" class="h6 mb-0"></h4>
+                        <span id="eventTypeDetailTotal" class="badge text-bg-light"></span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead><tr><th>Etiqueta</th><th>Operador</th><th class="text-end">Eventos</th></tr></thead>
+                            <tbody id="eventTypeDetailBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -493,6 +499,13 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const baseColors = ['#1D70B8', '#5DA7FF', '#00A7A3', '#F59E0B', '#EF4444', '#10B981'];
+        const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#039;',
+            '"': '&quot;'
+        }[character]));
 
         const eventTypeChart = new Chart(document.getElementById('eventTypeChart'), {
             type: 'bar',
@@ -582,21 +595,43 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
         const eventTypeOperatorChart = new Chart(document.getElementById('eventTypeOperatorChart'), {
             type: 'bar',
             data: {
-                labels: <?= json_encode($relacionOperadorLabels, JSON_UNESCAPED_UNICODE) ?>,
-                datasets: <?= json_encode($relacionDatasets, JSON_UNESCAPED_UNICODE) ?>
+                labels: <?= json_encode($tipoEventoLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: [{
+                    label: 'Eventos',
+                    data: <?= json_encode($tipoEventoValores) ?>,
+                    backgroundColor: '#1D70B8',
+                    hoverBackgroundColor: '#0F4C81',
+                    borderRadius: 8,
+                    maxBarThickness: 42
+                }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                indexAxis: 'y',
-                interaction: { mode: 'index', intersect: false },
+                onClick: function(event, elements) {
+                    if (!elements.length) return;
+                    const tipo = this.data.labels[elements[0].index];
+                    const detalle = <?= $tipoEventoDetalleJson ?>[tipo] || [];
+                    const total = detalle.reduce((suma, item) => suma + Number(item.total || 0), 0);
+                    const body = document.getElementById('eventTypeDetailBody');
+                    body.innerHTML = detalle.map((item) => `
+                        <tr>
+                            <td>${escapeHtml(item.etiqueta)}</td>
+                            <td>${escapeHtml(item.operador)}</td>
+                            <td class="text-end fw-semibold">${escapeHtml(item.total)}</td>
+                        </tr>
+                    `).join('');
+                    document.getElementById('eventTypeDetailTitle').textContent = `Etiquetas de ${tipo}`;
+                    document.getElementById('eventTypeDetailTotal').textContent = `${total} eventos`;
+                    document.getElementById('eventTypeDetail').classList.remove('d-none');
+                },
                 scales: {
-                    x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
-                    y: { stacked: true, ticks: { autoSkip: false } }
+                    y: { beginAtZero: true, ticks: { precision: 0 } },
+                    x: { ticks: { autoSkip: false } }
                 },
                 plugins: {
-                    legend: { position: 'bottom', maxHeight: 50 },
-                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x} eventos` } }
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.parsed.y} eventos. Haz clic para ver etiquetas` } }
                 }
             }
         });
