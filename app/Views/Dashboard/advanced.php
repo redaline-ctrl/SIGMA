@@ -22,44 +22,48 @@ $filtros = $filtros ?? [];
 $operadoresFiltro = $operadoresFiltro ?? [];
 $supervisoresFiltro = $supervisoresFiltro ?? [];
 
-function turnoLabel(string $numero): string
-{
-    return match ($numero) {
-        "1" => "Turno 1",
-        "2" => "Turno 2",
-        "3" => "Turno 3",
-        default => "Sin turno",
-    };
+if (!function_exists('sigmaTurnoLabel')) {
+    function sigmaTurnoLabel(string $numero): string
+    {
+        return match ($numero) {
+            "1" => "Turno 1",
+            "2" => "Turno 2",
+            "3" => "Turno 3",
+            default => "Sin turno",
+        };
+    }
 }
 
-function sigmaNormalizeChartLabel(string $value): string
-{
-    $value = trim($value);
-    if ($value === '') {
-        return $value;
+if (!function_exists('sigmaNormalizeChartLabel')) {
+    function sigmaNormalizeChartLabel(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return $value;
+        }
+
+        $map = [
+            'Bostez??' => 'Bostezo',
+            'Distracci??n' => 'Distracción',
+            'Obstrucci??n de c??mara' => 'Obstrucción de cámara',
+            'Desconexi??n de la c??mara' => 'Desconexión de la cámara',
+            'Uso del tel??fono confirmado' => 'Uso del teléfono confirmado',
+            'Fatiga cr??tica' => 'Fatiga crítica',
+            'Bostez�' => 'Bostezo',
+            'Distracci�n' => 'Distracción',
+            'Obstrucci�n de c�mara' => 'Obstrucción de cámara',
+            'Desconexi�n de la c�mara' => 'Desconexión de la cámara',
+            'Uso del tel�fono confirmado' => 'Uso del teléfono confirmado',
+            'Fatiga cr�tica' => 'Fatiga crítica',
+            'DistracciÃ³n' => 'Distracción',
+            'ObstrucciÃ³n de cÃ¡mara' => 'Obstrucción de cámara',
+            'DesconexiÃ³n de la cÃ¡mara' => 'Desconexión de la cámara',
+            'Uso del telÃ©fono confirmado' => 'Uso del teléfono confirmado',
+            'Fatiga crÃ­tica' => 'Fatiga crítica',
+        ];
+
+        return $map[$value] ?? $value;
     }
-
-    $map = [
-        'Bostez??' => 'Bostezo',
-        'Distracci??n' => 'Distracción',
-        'Obstrucci??n de c??mara' => 'Obstrucción de cámara',
-        'Desconexi??n de la c??mara' => 'Desconexión de la cámara',
-        'Uso del tel??fono confirmado' => 'Uso del teléfono confirmado',
-        'Fatiga cr??tica' => 'Fatiga crítica',
-        'Bostez�' => 'Bostezo',
-        'Distracci�n' => 'Distracción',
-        'Obstrucci�n de c�mara' => 'Obstrucción de cámara',
-        'Desconexi�n de la c�mara' => 'Desconexión de la cámara',
-        'Uso del tel�fono confirmado' => 'Uso del teléfono confirmado',
-        'Fatiga cr�tica' => 'Fatiga crítica',
-        'DistracciÃ³n' => 'Distracción',
-        'ObstrucciÃ³n de cÃ¡mara' => 'Obstrucción de cámara',
-        'DesconexiÃ³n de la cÃ¡mara' => 'Desconexión de la cámara',
-        'Uso del telÃ©fono confirmado' => 'Uso del teléfono confirmado',
-        'Fatiga crÃ­tica' => 'Fatiga crítica',
-    ];
-
-    return $map[$value] ?? $value;
 }
 
 $tipoLabels = array_map(fn($item) => htmlspecialchars(sigmaNormalizeChartLabel((string) ($item["nombre_evento"] ?? "-")), ENT_QUOTES, 'UTF-8'), $eventosPorTipo);

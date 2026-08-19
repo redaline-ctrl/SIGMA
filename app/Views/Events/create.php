@@ -14,27 +14,21 @@ if (!function_exists('sigmaNormalizeText')) {
             return $value;
         }
 
-        $map = [
-            'Bostez??' => 'Bostezo',
-            'Distracci??n' => 'Distracción',
-            'Obstrucci??n de c??mara' => 'Obstrucción de cámara',
-            'Desconexi??n de la c??mara' => 'Desconexión de la cámara',
-            'Uso del tel??fono confirmado' => 'Uso del teléfono confirmado',
-            'Fatiga cr??tica' => 'Fatiga crítica',
-            'Bostez�' => 'Bostezo',
-            'Distracci�n' => 'Distracción',
-            'Obstrucci�n de c�mara' => 'Obstrucción de cámara',
-            'Desconexi�n de la c�mara' => 'Desconexión de la cámara',
-            'Uso del tel�fono confirmado' => 'Uso del teléfono confirmado',
-            'Fatiga cr�tica' => 'Fatiga crítica',
-            'DistracciÃ³n' => 'Distracción',
-            'ObstrucciÃ³n de cÃ¡mara' => 'Obstrucción de cámara',
-            'DesconexiÃ³n de la cÃ¡mara' => 'Desconexión de la cámara',
-            'Uso del telÃ©fono confirmado' => 'Uso del teléfono confirmado',
-            'Fatiga crÃ­tica' => 'Fatiga crítica',
-        ];
+        $value = strtr($value, [
+            "Ã¡" => "á", "Ã©" => "é", "Ã­" => "í", "Ã³" => "ó", "Ãº" => "ú", "Ã±" => "ñ",
+            "Ã" => "Á", "Ã‰" => "É", "Ã" => "Í", "Ã“" => "Ó", "Ãš" => "Ú", "Ã‘" => "Ñ",
+            "�" => "",
+        ]);
 
-        return $map[$value] ?? $value;
+        $value = preg_replace('/operaci\?+n/iu', 'operación', $value) ?? $value;
+        $value = preg_replace('/distracci\?+n/iu', 'distracción', $value) ?? $value;
+        $value = preg_replace('/obstrucci\?+n/iu', 'obstrucción', $value) ?? $value;
+        $value = preg_replace('/desconexi\?+n/iu', 'desconexión', $value) ?? $value;
+        $value = preg_replace('/tel\?+fono/iu', 'teléfono', $value) ?? $value;
+        $value = preg_replace('/c\?+mara/iu', 'cámara', $value) ?? $value;
+        $value = preg_replace('/cr\?+tica/iu', 'crítica', $value) ?? $value;
+
+        return $value;
     }
 }
 ?>

@@ -455,21 +455,70 @@ class EventImportService
             return $permitirNulo ? null : null;
         }
 
+        $valorTexto = trim((string) $valor);
+
         if (ctype_digit((string) $valor)) {
             $stmt = $this->conexion->prepare("SELECT {$columnaId} FROM {$tabla} WHERE {$columnaId} = ? LIMIT 1");
             $stmt->execute([(int) $valor]);
             $id = $stmt->fetchColumn();
-            return $id !== false ? (int) $id : null;
+            if ($id !== false) {
+                return (int) $id;
+            }
         }
 
         $stmt = $this->conexion->prepare("SELECT {$columnaId} FROM {$tabla} WHERE LOWER({$columnaNombre}) = LOWER(?) LIMIT 1");
-        $stmt->execute([trim((string) $valor)]);
+        $stmt->execute([$valorTexto]);
         $id = $stmt->fetchColumn();
         if ($id !== false) {
             return (int) $id;
         }
 
+        // Fallback tolerante: permite diferencias de acentos, espacios y texto con codificación dañada.
+        $stmt = $this->conexion->prepare("SELECT {$columnaId} AS id, {$columnaNombre} AS nombre FROM {$tabla}");
+        $stmt->execute();
+        $candidatos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $buscado = $this->normalizarTextoComparacion($valorTexto);
+        foreach ($candidatos as $filaCandidata) {
+            $nombre = (string) ($filaCandidata["nombre"] ?? "");
+            if ($this->normalizarTextoComparacion($nombre) === $buscado) {
+                return (int) ($filaCandidata["id"] ?? 0);
+            }
+        }
+
         return null;
+    }
+
+    private function normalizarTextoComparacion(string $texto): string
+    {
+        $texto = trim($texto);
+        if ($texto === "") {
+            return "";
+        }
+
+        $texto = strtr($texto, [
+            "Ã¡" => "á", "Ã©" => "é", "Ã­" => "í", "Ã³" => "ó", "Ãº" => "ú", "Ã±" => "ñ",
+            "Ã" => "Á", "Ã‰" => "É", "Ã" => "Í", "Ã“" => "Ó", "Ãš" => "Ú", "Ã‘" => "Ñ",
+            "�" => "",
+        ]);
+
+        $texto = preg_replace('/operaci\?+n/iu', 'operación', $texto) ?? $texto;
+        $texto = preg_replace('/distracci\?+n/iu', 'distracción', $texto) ?? $texto;
+        $texto = preg_replace('/obstrucci\?+n/iu', 'obstrucción', $texto) ?? $texto;
+        $texto = preg_replace('/desconexi\?+n/iu', 'desconexión', $texto) ?? $texto;
+        $texto = preg_replace('/tel\?+fono/iu', 'teléfono', $texto) ?? $texto;
+        $texto = preg_replace('/c\?+mara/iu', 'cámara', $texto) ?? $texto;
+        $texto = preg_replace('/cr\?+tica/iu', 'crítica', $texto) ?? $texto;
+
+        $ascii = iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", $texto);
+        if ($ascii !== false) {
+            $texto = $ascii;
+        }
+
+        $texto = strtolower($texto);
+        $texto = preg_replace('/[^a-z0-9]+/', '', $texto) ?? $texto;
+
+        return $texto;
     }
 
     private function eventoDuplicado(array $datos): bool

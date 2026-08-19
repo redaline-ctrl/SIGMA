@@ -58,6 +58,31 @@ class ReporteController extends BaseController
         ];
     }
 
+    private function logoReporteDataUri(): ?string
+    {
+        $candidatos = [
+            __DIR__ . "/../../public/img/logo-emepsa.png",
+            __DIR__ . "/../../public/img/logo-isysa.png",
+            __DIR__ . "/../../public/img/logo.png",
+        ];
+
+        foreach ($candidatos as $ruta) {
+            if (!is_file($ruta) || !is_readable($ruta)) {
+                continue;
+            }
+
+            $contenido = @file_get_contents($ruta);
+            if ($contenido === false || $contenido === "") {
+                continue;
+            }
+
+            $mime = (new finfo(FILEINFO_MIME_TYPE))->file($ruta) ?: "image/png";
+            return "data:" . $mime . ";base64," . base64_encode($contenido);
+        }
+
+        return null;
+    }
+
     public function index(): void
     {
         $fecha = $_GET["fecha"] ?? date("Y-m-d");
@@ -147,12 +172,16 @@ class ReporteController extends BaseController
         $criticos = (int) ($resumen["criticos"] ?? 0);
         $eventos = (int) ($resumen["total_eventos"] ?? 0);
         $maquinasOperando = count(array_unique(array_filter(array_column($relevos, "maquina"))));
+        $logoDataUri = $this->logoReporteDataUri();
+        $logoHtml = $logoDataUri
+            ? "<img src='" . $esc($logoDataUri) . "' alt='Logo EMEPSA' class='brand-logo'>"
+            : "<span class='brand-fallback'>ISYSA</span>";
 
         header("Content-Type: text/html; charset=UTF-8");
         echo "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>" . $esc($titulo) . "</title><style>
-        *{box-sizing:border-box}body{font-family:Georgia,'Times New Roman',serif;color:#202020;margin:0;padding:28px 46px;font-size:14px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #222;padding-bottom:12px}header strong{font-size:18px}header small{font-size:16px;font-weight:bold}.report-title{display:flex;justify-content:space-between;align-items:end;margin:24px 0 20px}.report-title h1{font-size:20px;margin:0}.report-title strong{font-size:16px}.info{border:1px solid #999;padding:12px 16px;margin-bottom:24px}.info-title{font-weight:bold;margin-bottom:8px}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.section-title{font-size:15px;font-weight:bold;border-bottom:1px solid #222;padding:8px 0 3px;margin-top:20px}.section-title span{margin-right:12px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:5px 10px;border-bottom:1px solid #9db9e6}th{text-align:center}td:nth-child(2),td:nth-child(3){text-align:center}.stripe{background:#d8e3f7}.note{margin:12px 0 4px}.empty{padding-left:20px}.footer{display:flex;justify-content:space-between;margin-top:54px;font-size:12px}@media print{body{padding:20px 38px}.no-print{display:none!important}}@media(max-width:700px){body{padding:18px}.info-grid{grid-template-columns:1fr}.report-title{display:block}}
+        *{box-sizing:border-box}body{font-family:Georgia,'Times New Roman',serif;color:#202020;margin:0;padding:28px 46px;font-size:14px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #222;padding-bottom:12px}header strong{font-size:18px}header small{font-size:16px;font-weight:bold}.brand{display:flex;align-items:center;gap:12px}.brand-logo{height:46px;width:auto;max-width:160px;display:block}.brand-fallback{font-size:20px;font-weight:bold;letter-spacing:.04em}.report-title{display:flex;justify-content:space-between;align-items:end;margin:24px 0 20px}.report-title h1{font-size:20px;margin:0}.report-title strong{font-size:16px}.info{border:1px solid #999;padding:12px 16px;margin-bottom:24px}.info-title{font-weight:bold;margin-bottom:8px}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.section-title{font-size:15px;font-weight:bold;border-bottom:1px solid #222;padding:8px 0 3px;margin-top:20px}.section-title span{margin-right:12px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:5px 10px;border-bottom:1px solid #9db9e6}th{text-align:center}td:nth-child(2),td:nth-child(3){text-align:center}.stripe{background:#d8e3f7}.note{margin:12px 0 4px}.empty{padding-left:20px}.footer{display:flex;justify-content:space-between;margin-top:54px;font-size:12px}@media print{body{padding:20px 38px}.no-print{display:none!important}}@media(max-width:700px){body{padding:18px}.info-grid{grid-template-columns:1fr}.report-title{display:block}}
         </style></head><body><div class='no-print' style='text-align:right;margin-bottom:12px'><button onclick='window.print()'>Imprimir / Guardar como PDF</button></div>";
-        echo "<header><strong>INDUSTRIA SALINERA DE YUCATÁN, S.A. DE C.V.</strong><small>ISYSA</small></header>";
+        echo "<header><div class='brand'>{$logoHtml}<strong>INDUSTRIA SALINERA DE YUCATÁN, S.A. DE C.V.</strong></div><small>ISYSA</small></header>";
         echo "<div class='report-title'><h1>" . $esc($titulo) . "</h1><strong>" . date("d/m/Y") . "</strong></div>";
         echo "<div class='info'><div class='info-title'>Datos de monitoreo</div><div class='info-grid'><div><b>Fecha:</b> " . $esc($rango["inicio"]) . " al " . $esc($rango["fin"]) . "</div><div><b>Supervisor en Turno:</b> No especificado</div><div><b>Turno:</b> Todos los turnos (reporte " . $esc($rango["titulo"]) . ")</div><div><b>Monitorista:</b> Administrador SIGMA</div></div></div>";
         echo "<div class='section-title'><span>1.</span>RESUMEN DE RENDIMIENTO Y PRODUCTIVIDAD DE LA FLOTA</div><table><thead><tr><th>Indicador Operativo</th><th>Cantidad</th><th>Estado / Observaciones</th></tr></thead><tbody>";
