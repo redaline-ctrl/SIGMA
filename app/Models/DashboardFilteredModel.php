@@ -75,13 +75,14 @@ class DashboardFilteredModel extends BaseModel
     public function eventosPorEtiqueta(array $f): array
     {
         [$where, $params] = $this->eventFilter($f);
+        $etiquetaExpr = "COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta')";
         return $this->consultar(
-            "SELECT COALESCE(NULLIF(TRIM(et.nombre_etiqueta), ''), 'Sin etiqueta') etiqueta, COUNT(e.id_evento) total
+            "SELECT {$etiquetaExpr} etiqueta, COUNT(e.id_evento) total
              FROM eventos e
              LEFT JOIN etiquetas et ON et.id_etiqueta = e.id_etiqueta
              WHERE {$where}
-             GROUP BY etiqueta
-             ORDER BY total DESC, etiqueta ASC
+             GROUP BY {$etiquetaExpr}
+             ORDER BY COUNT(e.id_evento) DESC, {$etiquetaExpr} ASC
              LIMIT 12",
             $params
         );
