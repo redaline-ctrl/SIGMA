@@ -119,9 +119,6 @@ $horasValores = [
     (float) ($horasPorTurno["3"] ?? 0),
 ];
 
-$operadorChartLabels = array_map(fn($item) => htmlspecialchars($item["operador"] ?? "-", ENT_QUOTES, 'UTF-8'), $eventosPorOperador);
-$operadorChartValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorOperador);
-
 $conducLabels = array_map(function ($item) {
     return htmlspecialchars((string) ($item["clasificacion"] ?? "-"), ENT_QUOTES, 'UTF-8');
 }, $comparativaClasificacion);
@@ -207,6 +204,8 @@ $maquinaCriticaTexto = $maquinaCritica["nombre"] ?? "Sin datos";
 $totalesGlobales = (int) ($totalesClasificacion["total"] ?? 0);
 $totalesConductuales = (int) ($totalesClasificacion["conductuales"] ?? 0);
 $totalesRegistrados = (int) ($totalesClasificacion["registrados"] ?? 0);
+$porcentajeConductual = $totalesGlobales > 0 ? round(($totalesConductuales / $totalesGlobales) * 100, 1) : 0;
+$porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $totalesGlobales) * 100, 1) : 0;
 ?>
 
 <div class="dashboard-page">
@@ -242,7 +241,7 @@ $totalesRegistrados = (int) ($totalesClasificacion["registrados"] ?? 0);
             <div class="kpi-info">
                 <span>Total eventos por clasificación</span>
                 <strong><?= $totalesGlobales ?></strong>
-                <small><?= $totalesGlobales ?> Totales | <?= $totalesConductuales ?> Conductuales | <?= $totalesRegistrados ?> Registrados</small>
+                <small><?= $totalesConductuales ?> Conductuales (<?= number_format($porcentajeConductual, 1) ?>%) | <?= $totalesRegistrados ?> Registrados (<?= number_format($porcentajeRegistrado, 1) ?>%)</small>
             </div>
         </div>
 
@@ -316,42 +315,21 @@ $totalesRegistrados = (int) ($totalesClasificacion["registrados"] ?? 0);
             </div>
         </div>
 
-        <div class="col-lg-6">
+        <div class="col-12">
             <div class="chart-card">
-                <h3>Conductuales por operador</h3>
+                <h3>Resumen por operador (conductuales y registrados)</h3>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Operador</th><th class="text-end">Conductuales</th></tr></thead>
+                        <thead><tr><th>Operador</th><th class="text-end">Conductuales</th><th class="text-end">Registrados</th><th class="text-end">Total</th></tr></thead>
                         <tbody>
-                        <?php if (empty($conductualesPorOperador)): ?>
-                            <tr><td colspan="2" class="text-muted">Sin datos</td></tr>
+                        <?php if (empty($detalleOperadorCompleto)): ?>
+                            <tr><td colspan="4" class="text-muted">Sin datos</td></tr>
                         <?php else: ?>
-                            <?php foreach ($conductualesPorOperador as $item): ?>
+                            <?php foreach ($detalleOperadorCompleto as $item): ?>
                                 <tr>
                                     <td><?= htmlspecialchars((string) ($item["operador"] ?? "-"), ENT_QUOTES, "UTF-8") ?></td>
-                                    <td class="text-end fw-semibold"><?= (int) ($item["total"] ?? 0) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6">
-            <div class="chart-card">
-                <h3>Registrados por operador</h3>
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Operador</th><th class="text-end">Registrados</th></tr></thead>
-                        <tbody>
-                        <?php if (empty($registradosPorOperador)): ?>
-                            <tr><td colspan="2" class="text-muted">Sin datos</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($registradosPorOperador as $item): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars((string) ($item["operador"] ?? "-"), ENT_QUOTES, "UTF-8") ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["conductuales"] ?? 0) ?></td>
+                                    <td class="text-end fw-semibold"><?= (int) ($item["registrados"] ?? 0) ?></td>
                                     <td class="text-end fw-semibold"><?= (int) ($item["total"] ?? 0) ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -377,40 +355,8 @@ $totalesRegistrados = (int) ($totalesClasificacion["registrados"] ?? 0);
             </div>
         </div>
 
-        <div class="col-12">
-            <div class="chart-card">
-                <h3>Detalle por operador (conductuales y registrados)</h3>
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead><tr><th>Operador</th><th class="text-end">Conductuales</th><th class="text-end">Registrados</th><th class="text-end">Total</th></tr></thead>
-                        <tbody>
-                        <?php if (empty($detalleOperadorCompleto)): ?>
-                            <tr><td colspan="4" class="text-muted">Sin datos</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($detalleOperadorCompleto as $item): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars((string) ($item["operador"] ?? "-"), ENT_QUOTES, "UTF-8") ?></td>
-                                    <td class="text-end fw-semibold"><?= (int) ($item["conductuales"] ?? 0) ?></td>
-                                    <td class="text-end fw-semibold"><?= (int) ($item["registrados"] ?? 0) ?></td>
-                                    <td class="text-end fw-semibold"><?= (int) ($item["total"] ?? 0) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
         <!-- Row Eventos y Máquinas -->
-        <div class="col-lg-7">
-            <div class="chart-card">
-                <h3>Eventos por operador</h3>
-                <div class="chart-wrap"><canvas id="operatorEventsChart"></canvas></div>
-            </div>
-        </div>
-
-        <div class="col-lg-5">
+        <div class="col-12">
             <div class="chart-card">
                 <h3>Máquinas</h3>
                 <div class="chart-wrap"><canvas id="machineChart"></canvas></div>
@@ -516,26 +462,6 @@ $totalesRegistrados = (int) ($totalesClasificacion["registrados"] ?? 0);
                 maintainAspectRatio: false,
                 cutout: '55%',
                 plugins: { legend: { position: 'bottom' } }
-            }
-        });
-
-        const operatorEventsChart = new Chart(document.getElementById('operatorEventsChart'), {
-            type: 'bar',
-            data: {
-                labels: <?= json_encode($operadorChartLabels, JSON_UNESCAPED_UNICODE) ?>,
-                datasets: [{
-                    label: 'Eventos',
-                    data: <?= json_encode($operadorChartValores) ?>,
-                    backgroundColor: '#1D70B8',
-                    borderRadius: 8,
-                    maxBarThickness: 28
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         });
 
