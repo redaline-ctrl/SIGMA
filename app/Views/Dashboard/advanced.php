@@ -9,6 +9,7 @@ $detalleOperadorCompleto = $detalleOperadorCompleto ?? [];
 $detalleConductualPorEtiqueta = $detalleConductualPorEtiqueta ?? [];
 $eventosPorTipo = $eventosPorTipo ?? [];
 $eventosPorEtiqueta = $eventosPorEtiqueta ?? [];
+$eventosPorTipoPorOperador = $eventosPorTipoPorOperador ?? [];
 $eventosPorTurno = $eventosPorTurno ?? [];
 $operadoresTop = $operadoresTop ?? [];
 $maquinasTop = $maquinasTop ?? [];
@@ -77,6 +78,36 @@ $tipoValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorTi
 
 $etiquetaLabels = array_map(fn($item) => htmlspecialchars(sigmaNormalizeChartLabel((string) ($item["etiqueta"] ?? "Sin etiqueta")), ENT_QUOTES, 'UTF-8'), $eventosPorEtiqueta);
 $etiquetaValores = array_map(fn($item) => (int) ($item["total"] ?? 0), $eventosPorEtiqueta);
+
+$tiposPorOperador = [];
+$operadoresTipoLabels = [];
+foreach ($eventosPorTipoPorOperador as $item) {
+    $operador = (string) ($item["operador"] ?? "Sin operador");
+    $tipo = sigmaNormalizeChartLabel((string) ($item["tipo_evento"] ?? "Sin tipo"));
+    $tiposPorOperador[$operador][$tipo] = (int) ($item["total"] ?? 0);
+    if (!in_array($operador, $operadoresTipoLabels, true)) {
+        $operadoresTipoLabels[] = $operador;
+    }
+}
+
+$tiposEventoLabels = [];
+foreach ($tiposPorOperador as $tipos) {
+    foreach (array_keys($tipos) as $tipo) {
+        if (!in_array($tipo, $tiposEventoLabels, true)) {
+            $tiposEventoLabels[] = $tipo;
+        }
+    }
+}
+$tiposPorOperadorDatasets = [];
+$coloresTiposEvento = ['#1D70B8', '#00A7A3', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B', '#14B8A6'];
+foreach ($tiposEventoLabels as $indice => $tipo) {
+    $tiposPorOperadorDatasets[] = [
+        'label' => $tipo,
+        'data' => array_map(fn($operador) => $tiposPorOperador[$operador][$tipo] ?? 0, $operadoresTipoLabels),
+        'backgroundColor' => $coloresTiposEvento[$indice % count($coloresTiposEvento)],
+        'borderWidth' => 0,
+    ];
+}
 
 $turnoPorNombre = [];
 foreach (["1", "2", "3"] as $turno) {
@@ -347,6 +378,13 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
             </div>
         </div>
 
+        <div class="col-12">
+            <div class="chart-card">
+                <h3>Eventos por tipo y operador</h3>
+                <div class="chart-wrap large"><canvas id="eventTypeOperatorChart"></canvas></div>
+            </div>
+        </div>
+
         <!-- Detalle Conductual: Gráfico visual -->
         <div class="col-12">
             <div class="chart-card">
@@ -501,6 +539,28 @@ $porcentajeRegistrado = $totalesGlobales > 0 ? round(($totalesRegistrados / $tot
                 scales: {
                     x: { beginAtZero: true, ticks: { precision: 0 } },
                     y: { ticks: { autoSkip: false } }
+                }
+            }
+        });
+
+        const eventTypeOperatorChart = new Chart(document.getElementById('eventTypeOperatorChart'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($operadoresTipoLabels, JSON_UNESCAPED_UNICODE) ?>,
+                datasets: <?= json_encode($tiposPorOperadorDatasets, JSON_UNESCAPED_UNICODE) ?>
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } },
+                    y: { stacked: true, ticks: { autoSkip: false } }
+                },
+                plugins: {
+                    legend: { position: 'bottom', maxHeight: 50 },
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.x} eventos` } }
                 }
             }
         });

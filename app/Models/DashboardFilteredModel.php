@@ -293,6 +293,22 @@ class DashboardFilteredModel extends BaseModel
         );
     }
 
+    public function eventosPorTipoPorOperador(array $f): array
+    {
+        [$where, $params] = $this->eventFilter($f);
+        return $this->consultar(
+            "SELECT o.nombre_completo AS operador, te.nombre_evento AS tipo_evento,
+                    COUNT(e.id_evento) AS total
+            FROM eventos e
+            INNER JOIN operadores o ON o.id_operador = e.id_operador
+            INNER JOIN tipos_eventos te ON te.id_tipo_evento = e.id_tipo_evento
+            WHERE {$where}
+            GROUP BY o.id_operador, o.nombre_completo, te.id_tipo_evento, te.nombre_evento
+            ORDER BY o.nombre_completo ASC, total DESC, te.nombre_evento ASC",
+            $params
+        );
+    }
+
     public function eventosPorTurno(array $f): array
     {
         return $this->getEventosPorTurno($f);

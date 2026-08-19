@@ -37,6 +37,7 @@ class DashboardAdvancedController extends BaseController
             "detalleConductualPorEtiqueta" => $this->dashboard->getDetalleConductualPorOperadorPorEtiqueta($filtros),
             "eventosPorTipo" => $this->dashboard->eventosPorTipo($filtros),
             "eventosPorEtiqueta" => $this->dashboard->eventosPorEtiqueta($filtros),
+            "eventosPorTipoPorOperador" => $this->dashboard->eventosPorTipoPorOperador($filtros),
             "eventosPorTurno" => $this->dashboard->getEventosPorTurno($filtros),
             "operadoresTop" => $this->dashboard->operadoresConMasEventos($filtros),
             "maquinasTop" => $this->dashboard->maquinasConMasEventos($filtros),
